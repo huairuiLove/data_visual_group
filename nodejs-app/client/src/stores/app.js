@@ -1,0 +1,129 @@
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import { api } from '../services/api'
+
+export const useAppStore = defineStore('app', () => {
+  // State
+  const apiConfigured = ref(false)
+  const neo4jConnected = ref(false)
+  const fileProcessed = ref(false)
+  const llmProvider = ref('deepseek')
+  const modelName = ref('deepseek-chat')
+  const apiKey = ref('')
+  const currentFile = ref('')
+  const currentFileHash = ref('')
+  const analysisResult = ref(null)
+  const loading = ref(false)
+  const error = ref('')
+
+  // Computed
+  const stats = computed(() => analysisResult.value?.stats || {})
+  const meta = computed(() => stats.value.meta || {})
+  const entityData = computed(() => analysisResult.value?.entityData || {})
+  const keywordData = computed(() => analysisResult.value?.keywordData || {})
+  const personData = computed(() => analysisResult.value?.personData || {})
+  const timeline = computed(() => analysisResult.value?.timeline || [])
+  const spatialData = computed(() => analysisResult.value?.spatialData || {})
+  const graphData = computed(() => analysisResult.value?.graphData || { nodes: [], links: [] })
+  const edges = computed(() => analysisResult.value?.edges || [])
+  const insights = computed(() => analysisResult.value?.insights || [])
+
+  const isReady = computed(() => apiConfigured.value && neo4jConnected.value && fileProcessed.value)
+
+  // Actions
+  async function testLLM(provider, key, model) {
+    try {
+      const res = await api.post('/test-llm', { provider, apiKey: key, model })
+      return res
+    } catch (e) {
+      return { success: false, message: e.message }
+    }
+  }
+
+  async function testEmbeddings(type, opts) {
+    try {
+      const res = await api.post('/test-embeddings', { type, ...opts })
+      return res
+    } catch (e) {
+      return { success: false, message: e.message }
+    }
+  }
+
+  async function connectNeo4j(url, username, password) {
+    try {
+      const res = await api.post('/neo4j/connect', { url, username, password })
+      if (res.success) neo4jConnected.value = true
+      return res
+    } catch (e) {
+      return { success: false, message: e.message }
+    }
+  }
+
+  async function confirmSetup(provider, model, key) {
+    try {
+      const res = await api.post('/settings/llm', { provider, apiKey: key, model })
+      llmProvider.value = provider
+      modelName.value = res.model || model
+      apiKey.value = key
+      apiConfigured.value = true
+      return res
+    } catch (e) {
+      apiConfigured.value = false
+      return { success: false, message: e.message }
+    }
+  }
+
+  async function uploadFile(file) {
+    loading.value = true
+    error.value = ''
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('llmProvider', llmProvider.value)
+
+      const res = await api.upload('/upload', formData)
+      if (res.success) {
+        analysisResult.value = res.analysisResult
+        currentFile.value = res.fileName
+        currentFileHash.value = res.fileHash
+        fileProcessed.value = true
+      } else {
+        error.value = res.error || 'Upload failed'
+      }
+      return res
+    } catch (e) {
+      error.value = e.message
+      return { success: false, error: e.message }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function reanalyze() {
+    fileProcessed.value = false
+    analysisResult.value = null
+    await api.post('/reset', {})
+  }
+
+  async function askQuestion(question) {
+    try {
+      return await api.post('/qa', {
+        question,
+        provider: llmProvider.value,
+      })
+    } catch (e) {
+      return { answer: `Error: ${e.message}`, sources: [] }
+    }
+  }
+
+  return {
+    apiConfigured, neo4jConnected, fileProcessed,
+    llmProvider, modelName, apiKey,
+    currentFile, currentFileHash, analysisResult,
+    loading, error,
+    stats, meta, entityData, keywordData, personData,
+    timeline, spatialData, graphData, edges, insights, isReady,
+    testLLM, testEmbeddings, connectNeo4j,
+    confirmSetup, uploadFile, reanalyze, askQuestion,
+  }
+})

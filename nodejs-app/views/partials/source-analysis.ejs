@@ -1,0 +1,34 @@
+<!-- 视图5: 来源分析 -->
+<div class="view-header">
+  <h2>来源分析</h2>
+</div>
+
+<div class="kpi-row" id="source-kpis">
+  <div class="kpi-card"><span class="kpi-value" id="src-name">-</span><span class="kpi-label">文档名称</span></div>
+  <div class="kpi-card"><span class="kpi-value" id="src-chunks">0</span><span class="kpi-label">文本块数</span></div>
+  <div class="kpi-card"><span class="kpi-value" id="src-avg">0</span><span class="kpi-label">平均块大小</span></div>
+  <div class="kpi-card"><span class="kpi-value" id="src-chars">0</span><span class="kpi-label">总字符数</span></div>
+</div>
+
+<hr>
+
+<div class="chart-row">
+  <div class="chart-half">
+    <h4>文本块大小统计</h4>
+    <div id="chart-boxplot" class="chart-container"></div>
+  </div>
+  <div class="chart-half">
+    <h4>实体密度分析</h4>
+    <div id="chart-treemap" class="chart-container"></div>
+  </div>
+</div>
+
+<h4>关系网络分析</h4>
+<div class="chart-row">
+  <div class="chart-half">
+    <div id="chart-sankey" class="chart-container"></div>
+  </div>
+  <div class="chart-half">
+    <div id="chart-heatmap" class="chart-container"></div>
+  </div>
+</div>

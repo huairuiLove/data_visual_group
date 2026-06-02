@@ -1,0 +1,24 @@
+<!-- 视图4: 空间态势 -->
+<div class="view-header">
+  <h2>空间态势</h2>
+</div>
+
+<div class="kpi-row" id="spatial-kpis">
+  <div class="kpi-card"><span class="kpi-value" id="sp-locations">0</span><span class="kpi-label">发现位置数</span></div>
+  <div class="kpi-card"><span class="kpi-value" id="sp-top">-</span><span class="kpi-label">最频繁地点</span></div>
+  <div class="kpi-card"><span class="kpi-value" id="sp-mentions">0</span><span class="kpi-label">总提及次数</span></div>
+</div>
+
+<hr>
+
+<h4>地理位置分布</h4>
+<div id="chart-spatial-map" class="chart-container" style="height:550px;"></div>
+
+<h4>地理位置详情</h4>
+<table id="spatial-table" class="data-table">
+  <thead><tr><th>地点</th><th>纬度</th><th>经度</th><th>提及次数</th></tr></thead>
+  <tbody></tbody>
+</table>
+
+<h4>地点提及频次</h4>
+<div id="chart-spatial-bar" class="chart-container"></div>

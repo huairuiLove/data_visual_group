@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'DataGraphX' %></title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>DataGraphX</h2>
+        <small>中东冲突态势智能分析台</small>
+      </div>
+
+      <div class="sidebar-section" id="intro-section">
+        <details>
+          <summary>项目介绍</summary>
+          <p>此应用程序允许您上传PDF/DOCX/TXT文件，将其内容提取到Neo4j图形数据库中，并使用自然语言执行查询。利用LangChain和DeepSeek的模型生成Cypher查询，实时与Neo4j数据库交互。</p>
+        </details>
+      </div>
+
+      <!-- API Settings (shown before configuration) -->
+      <div class="sidebar-section" id="api-setup">
+        <h3>API 设置</h3>
+        <div class="form-group">
+          <label>选择 API 类型</label>
+          <select id="api-provider">
+            <option value="deepseek">DeepSeek</option>
+            <option value="openai">OpenAI</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label id="api-key-label">DeepSeek API 密钥</label>
+          <input type="password" id="api-key" placeholder="输入 API 密钥">
+        </div>
+        <div class="form-group">
+          <label>模型名称</label>
+          <input type="text" id="model-name" value="deepseek-chat">
+        </div>
+        <button class="btn btn-outline" id="test-llm-btn">测试 API 连接</button>
+
+        <h3 style="margin-top:1rem;">嵌入模型设置</h3>
+        <div class="form-group">
+          <label>选择嵌入模型</label>
+          <select id="embed-type">
+            <option value="local">本地 (Ollama)</option>
+            <option value="openai">OpenAI</option>
+          </select>
+        </div>
+        <div class="form-group" id="embed-local-group">
+          <label>本地嵌入 API URL</label>
+          <input type="text" id="embed-url" value="http://localhost:11434/v1">
+          <label>嵌入模型名称</label>
+          <input type="text" id="embed-model" value="nomic-embed-text">
+        </div>
+        <button class="btn btn-outline" id="test-embed-btn">测试嵌入模型</button>
+        <button class="btn btn-primary" id="confirm-setup-btn">确认设置</button>
+      </div>
+
+      <!-- Neo4j Connection (shown after API config) -->
+      <div class="sidebar-section" id="neo4j-setup" style="display:none;">
+        <h3>连接到 Neo4j 数据库</h3>
+        <div class="form-group">
+          <label>Neo4j URL</label>
+          <input type="text" id="neo4j-url" value="neo4j://localhost:7687">
+        </div>
+        <div class="form-group">
+          <label>用户名</label>
+          <input type="text" id="neo4j-user" value="neo4j">
+        </div>
+        <div class="form-group">
+          <label>密码</label>
+          <input type="password" id="neo4j-password" value="password123">
+        </div>
+        <button class="btn btn-primary" id="connect-neo4j-btn">连接</button>
+      </div>
+
+      <!-- File Upload (shown after Neo4j connected) -->
+      <div class="sidebar-section" id="upload-section" style="display:none;">
+        <h3>上传文档</h3>
+        <input type="file" id="file-input" accept=".pdf,.docx,.txt">
+        <button class="btn btn-primary" id="upload-btn" style="margin-top:0.5rem;">处理文档</button>
+        <div class="progress-bar" id="upload-progress" style="display:none;">
+          <div class="progress-fill"></div>
+        </div>
+        <div id="upload-status"></div>
+      </div>
+
+      <!-- Document Info (shown after processing) -->
+      <div class="sidebar-section" id="doc-info" style="display:none;">
+        <details>
+          <summary>文档信息</summary>
+          <div id="doc-meta"></div>
+          <button class="btn btn-outline" id="reanalyze-btn" style="margin-top:0.5rem;">重新分析文档</button>
+        </details>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div id="main-placeholder">
+        <h1>DataGraphX</h1>
+        <p>请先在侧边栏完成 API 设置、Neo4j 连接，然后上传文档开始分析。</p>
+      </div>
+
+      <!-- Dashboard Tabs (shown after processing) -->
+      <div id="dashboard" style="display:none;">
+        <div class="tabs">
+          <button class="tab active" data-tab="overview">态势总览</button>
+          <button class="tab" data-tab="timeline">事件时间线</button>
+          <button class="tab" data-tab="knowledge-graph">知识图谱</button>
+          <button class="tab" data-tab="spatial">空间态势</button>
+          <button class="tab" data-tab="source-analysis">来源分析</button>
+          <button class="tab" data-tab="qa">证据问答</button>
+        </div>
+
+        <div class="tab-content" id="tab-overview">
+          <%- include('partials/overview') %>
+        </div>
+        <div class="tab-content" id="tab-timeline" style="display:none;">
+          <%- include('partials/timeline') %>
+        </div>
+        <div class="tab-content" id="tab-knowledge-graph" style="display:none;">
+          <%- include('partials/knowledge-graph') %>
+        </div>
+        <div class="tab-content" id="tab-spatial" style="display:none;">
+          <%- include('partials/spatial') %>
+        </div>
+        <div class="tab-content" id="tab-source-analysis" style="display:none;">
+          <%- include('partials/source-analysis') %>
+        </div>
+        <div class="tab-content" id="tab-qa" style="display:none;">
+          <%- include('partials/qa') %>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.6/dist/vis-network.min.js"></script>
+  <script src="/js/dashboard.js"></script>
+  <script src="/js/fisheye.js"></script>
+  <script src="/js/force-graph.js"></script>
+  <script src="/js/qa.js"></script>
+</body>
+</html>

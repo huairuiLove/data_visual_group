@@ -1,0 +1,35 @@
+{
+  "name": "datagraphx",
+  "version": "2.0.0",
+  "description": "中东冲突态势智能分析台 - DataGraphX Node.js Edition",
+  "main": "server.js",
+  "scripts": {
+    "start": "NODE_ENV=production node server.js",
+    "dev": "node server.js",
+    "dev:ui": "npm --prefix client run dev",
+    "dev:all": "concurrently \"npm run dev\" \"npm run dev:ui\"",
+    "build": "npm --prefix client run build",
+    "lint": "eslint .",
+    "format": "prettier --write \"**/*.{js,vue,css,json,md}\""
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.21.0",
+    "mammoth": "^1.8.0",
+    "multer": "^1.4.5-lts.1",
+    "natural": "^8.0.1",
+    "neo4j-driver": "^5.24.0",
+    "node-fetch": "^2.7.0",
+    "openai": "^4.67.0",
+    "pdf-parse": "^1.1.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "concurrently": "^10.0.3",
+    "eslint": "^10.4.1",
+    "eslint-plugin-vue": "^10.9.1",
+    "globals": "^17.6.0",
+    "prettier": "^3.8.3"
+  }
+}

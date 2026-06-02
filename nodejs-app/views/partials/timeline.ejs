@@ -1,0 +1,24 @@
+<!-- 视图2: 事件时间线 -->
+<div class="view-header">
+  <h2>事件时间线</h2>
+</div>
+
+<div class="kpi-row" id="timeline-kpis">
+  <div class="kpi-card"><span class="kpi-value" id="tl-nodes">0</span><span class="kpi-label">时间节点数</span></div>
+  <div class="kpi-card"><span class="kpi-value" id="tl-events">0</span><span class="kpi-label">总事件数</span></div>
+  <div class="kpi-card"><span class="kpi-value" id="tl-categories">0</span><span class="kpi-label">事件类别数</span></div>
+</div>
+
+<hr>
+
+<h4>事件时间线图</h4>
+<div id="chart-timeline-scatter" class="chart-container"></div>
+
+<h4>事件详情</h4>
+<div class="form-group">
+  <label>按事件类别筛选</label>
+  <select id="timeline-category-filter">
+    <option value="全部">全部</option>
+  </select>
+</div>
+<div id="timeline-events-list"></div>

@@ -1,0 +1,30 @@
+# 环境变量 (含 API 密钥和数据库密码)
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# IDE
+.idea/
+.vscode/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# macOS
+.DS_Store
+
+# Claude
+.claude/
+
+# Archives
+*.zip
+
+# Node.js
+node_modules/
+
+# Cache
+cache/
