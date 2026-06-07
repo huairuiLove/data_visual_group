@@ -10,7 +10,10 @@
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:ui\"",
     "build": "npm --prefix client run build",
     "lint": "eslint .",
-    "format": "prettier --write \"**/*.{js,vue,css,json,md}\""
+    "format": "prettier --write \"**/*.{js,vue,css,json,md}\"",
+    "test:notebook": "node scripts/test-e2e-notebook.js",
+    "test:notebook:offline": "FORCE_FALLBACK=1 node scripts/test-e2e-notebook.js",
+    "test:report": "node scripts/test-report-save.js"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

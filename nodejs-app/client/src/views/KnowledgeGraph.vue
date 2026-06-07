@@ -1,8 +1,9 @@
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
 import { useAppStore } from '../stores/app'
 import { usePlotly, generateColors } from '../composables/usePlotly'
 import { useFisheye, useForceGraph } from '../composables/useFisheye'
+import { useDynamicGraph } from '../composables/useDynamicGraph'
 import KpiCard from '../components/KpiCard.vue'
 import { escapeHtml } from '../utils/html'
 
@@ -13,12 +14,14 @@ const selectedTypes = ref([])
 const standardChart = ref(null)
 const forceChart = ref(null)
 const fisheyeChart = ref(null)
+const dynamicChart = ref(null)
 const chart3d = ref(null)
 
 const { render: renderStandard } = usePlotly(standardChart, { layout: { height: 620 } })
 const { render: render3d } = usePlotly(chart3d, { layout: { height: 650, margin: { l: 0, r: 0, t: 0, b: 0 } } })
 const { render: renderFisheye } = useFisheye(fisheyeChart)
 const { render: renderForce } = useForceGraph(forceChart)
+const { render2DDynamic, stop: stopDynamic } = useDynamicGraph()
 
 const allTypes = computed(() => {
   const types = {}
@@ -165,9 +168,17 @@ function updateViz() {
     if (vizMode.value === 'standard') renderStandardGraph()
     else if (vizMode.value === 'force') renderForce(filteredData.value.nodes, filteredData.value.links, nodeTypes.value)
     else if (vizMode.value === 'fisheye') renderFisheye(filteredData.value.nodes, filteredData.value.links, nodeTypes.value)
+    else if (vizMode.value === 'dynamic') {
+      stopDynamic()
+      if (dynamicChart.value) {
+        render2DDynamic(dynamicChart.value, filteredData.value.nodes, filteredData.value.links, { height: 620 })
+      }
+    }
     else if (vizMode.value === '3d') render3dGraph()
   })
 }
+
+onUnmounted(() => stopDynamic())
 
 function toggleType(type) {
   const idx = selectedTypes.value.indexOf(type)
@@ -223,16 +234,17 @@ watch(vizMode, updateViz)
 
       <!-- Viz mode tabs -->
       <div class="sub-tabs">
-        <button v-for="mode in ['standard','force','fisheye','3d']" :key="mode"
+        <button v-for="mode in ['standard','force','fisheye','dynamic','3d']" :key="mode"
           class="sub-tab" :class="{ active: vizMode === mode }"
           @click="vizMode = mode">
-          {{ { standard: '标准视图', force: '力导向', fisheye: '鱼眼视图', '3d': '三维视图' }[mode] }}
+          {{ { standard: '标准视图', force: '力导向', fisheye: '鱼眼视图', dynamic: '2D动态', '3d': '三维视图' }[mode] }}
         </button>
       </div>
 
       <div ref="standardChart" class="chart" v-show="vizMode === 'standard'"/>
       <div ref="forceChart" class="chart chart-tall" v-show="vizMode === 'force'"/>
       <div ref="fisheyeChart" class="chart chart-tall" v-show="vizMode === 'fisheye'"/>
+      <div ref="dynamicChart" class="chart chart-tall" v-show="vizMode === 'dynamic'"/>
       <div ref="chart3d" class="chart chart-tall" v-show="vizMode === '3d'"/>
 
       <details>

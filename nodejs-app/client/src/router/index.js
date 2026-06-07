@@ -8,6 +8,10 @@ const routes = [
   { path: '/spatial', name: 'spatial', component: () => import('../views/Spatial.vue') },
   { path: '/source-analysis', name: 'sourceAnalysis', component: () => import('../views/SourceAnalysis.vue') },
   { path: '/qa', name: 'qa', component: () => import('../views/QA.vue') },
+  { path: '/multi-article', name: 'multiArticle', component: () => import('../views/MultiArticle.vue') },
+  { path: '/notebook-lab', name: 'notebookLab', component: () => import('../views/NotebookLab.vue') },
+  { path: '/dynamic-viz', name: 'dynamicViz', component: () => import('../views/DynamicViz.vue') },
+  { path: '/research-reports', name: 'researchReports', component: () => import('../views/ResearchReports.vue') },
 ]
 
 export default createRouter({

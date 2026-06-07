@@ -11,8 +11,18 @@ const {
   processDocument, generateFileHash, saveGraphData, loadGraphData,
 } = require('../services/document');
 const { runDataAnalysis } = require('../analysis/pipeline');
+const { computeWork1Metrics, enrichAnalysisResult } = require('../analysis/work1-metrics');
+const { applyCanonicalization } = require('../services/entity-canonicalization');
 const { updateEnvFile } = require('../services/env');
 const { AppError, sendError } = require('../services/errors');
+const { validateFileType, validateMiddleEastTheme } = require('../services/article-filter');
+const { extractFromChunks } = require('../services/extraction');
+const { generateNotebook } = require('../services/notebook-generator');
+const { writeResearchReport } = require('../services/agents/report-writer');
+const { saveResearchReport, listResearchReports, getResearchReport, ensureSchema } = require('../services/research-report-db');
+const {
+  loadArticleIndex, ingestArticle, filterArticles, runJointAnalysis,
+} = require('../services/multi-article');
 const config = require('../config');
 
 const router = express.Router();
@@ -108,6 +118,49 @@ router.post('/neo4j/connect', async (req, res) => {
   }
 });
 
+async function persistExtractionToNeo4j(entities, relations) {
+  await runQuery('MATCH (n) WHERE NOT n:Document DETACH DELETE n');
+
+  const seenNodeIds = new Set();
+  const allNodes = [];
+  const allRels = [];
+
+  for (const entity of entities) {
+    const nid = String(entity.name || entity.id).trim();
+    const ntype = String(entity.type).trim();
+    const label = config.graph.allowedNodes.includes(ntype) ? ntype : ntype;
+    if (!nid || seenNodeIds.has(nid)) continue;
+    seenNodeIds.add(nid);
+    const text = [nid, entity.summary].filter(Boolean).join(' — ').slice(0, 200);
+    allNodes.push({ id: nid, type: ntype, text, summary: entity.summary || '' });
+
+    await runQuery(
+      `MERGE (n:\`${label}\` {id: $id})
+       SET n.text = $text, n.summary = $summary, n.aliases = $aliases`,
+      { id: nid, text, summary: entity.summary || '', aliases: entity.aliases || [] },
+    );
+  }
+
+  for (const rel of relations) {
+    const src = String(rel.source).trim();
+    const tgt = String(rel.target).trim();
+    const rtype = String(rel.type).trim();
+    if (!seenNodeIds.has(src) || !seenNodeIds.has(tgt)) continue;
+    allRels.push({ source: src, target: tgt, type: rtype });
+    await runQuery(
+      `MATCH (a {id: $src}), (b {id: $tgt})
+       MERGE (a)-[r:\`${rtype}\`]->(b)
+       SET r.summary = $summary`,
+      { src, tgt, summary: rel.summary || '' },
+    );
+  }
+
+  return {
+    nodes: allNodes.map(n => ({ id: n.id, type: n.type, properties: { text: n.text, summary: n.summary } })),
+    relationships: allRels.map(r => ({ source: r.source, target: r.target, type: r.type, properties: {} })),
+  };
+}
+
 // --- API: Upload and process document ---
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
@@ -117,124 +170,74 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
     const filePath = req.file.path;
     const fileName = req.file.originalname;
+    const typeCheck = validateFileType(fileName);
+    if (!typeCheck.valid) {
+      await fsp.unlink(filePath).catch(() => {});
+      throw new AppError(415, 'UNSUPPORTED_FILE_TYPE', typeCheck.reason);
+    }
+
     const fileContent = await fsp.readFile(filePath);
     const fileHash = generateFileHash(fileContent);
+    const provider = req.body.llmProvider || 'deepseek';
+    const analysisMode = req.body.analysisMode || config.analysis.defaultMode;
 
-    // Check if already processed in Neo4j
     const existing = await runQuery(
       'MATCH (d:Document {hash: $hash}) RETURN d',
-      { hash: fileHash }
+      { hash: fileHash },
     );
 
-    let needProcessing = existing.length === 0;
-
-    // Process document into chunks
+    const needProcessing = existing.length === 0;
     const chunks = await processDocument(filePath, fileName);
+    const fullText = chunks.map(c => c.text).join('\n');
+
+    if (config.analysis.requireMiddleEastTheme) {
+      const theme = await validateMiddleEastTheme(fullText, provider);
+      if (!theme.isValid) {
+        await fsp.unlink(filePath).catch(() => {});
+        throw new AppError(422, 'THEME_MISMATCH', `文章主题不符合中东冲突要求: ${theme.reason}`);
+      }
+      appState.themeValidation = theme;
+    }
+
+    let extractedEntities = [];
+    let extractedRelations = [];
+
+    if (!needProcessing) {
+      const cachedGraph = await loadGraphData(fileHash);
+      if (cachedGraph) {
+        extractedEntities = (cachedGraph.nodes || []).map(n => ({
+          id: n.id,
+          name: n.id,
+          type: n.type,
+          summary: n.properties?.summary || '',
+          aliases: n.properties?.aliases || [],
+        }));
+        extractedRelations = (cachedGraph.relationships || []).map(r => ({
+          source: r.source,
+          target: r.target,
+          type: r.type,
+        }));
+      }
+    }
 
     if (needProcessing) {
-      // Clear database
-      await runQuery('MATCH (n) DETACH DELETE n');
+      const extraction = await extractFromChunks(chunks, analysisMode, provider, {
+        title: fileName,
+        date: new Date().toISOString().slice(0, 10),
+      });
+      const canon = applyCanonicalization(extraction.entities, extraction.relations);
+      extractedEntities = canon.entities;
+      extractedRelations = canon.relations;
 
-      // Build entity extraction prompt
-      const nodeHint = config.graph.allowedNodes.map(t => `- ${t}`).join('\n');
-      const relHint = config.graph.allowedRelationships.map(t => `- ${t}`).join('\n');
-
-      const entityPrompt = `你是一个军事情报实体关系提取专家。从给定的文本片段中提取实体和关系。
-
-## 允许的实体类型
-${nodeHint}
-
-## 允许的关系类型
-${relHint}
-
-## 输出格式 (严格JSON，不要markdown代码块)
-{
-    "nodes": [
-        {"id": "实体唯一名称", "type": "实体类型(从允许列表选)"}
-    ],
-    "relationships": [
-        {"source": "源实体名称", "target": "目标实体名称", "type": "关系类型(从允许列表选)"}
-    ]
-}
-
-## 规则
-1. 只提取文本中明确出现的信息，不要编造
-2. 实体类型必须从允许列表中选择最适合的
-3. 每个实体的id必须唯一，用具体名称(如"伊朗革命卫队"而非"军事组织A")
-4. 关系中的source和target必须出现在nodes的id中
-5. 如果不确定类型，宁可跳过也不要乱填`;
-
-      // Process chunks through LLM
-      const allNodes = [];
-      const allRels = [];
-      const seenNodeIds = new Set();
-
-      for (let i = 0; i < chunks.length; i++) {
-        const text = chunks[i].text.slice(0, 2500);
-        const provider = req.body.llmProvider || 'deepseek';
-
-        try {
-          const response = await chat([
-            { role: 'system', content: entityPrompt },
-            { role: 'user', content: `待提取文本:\n${text}` },
-          ], provider);
-
-          // Parse JSON from response
-          const jsonMatch = response.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const data = JSON.parse(jsonMatch[0]);
-
-            for (const node of (data.nodes || [])) {
-              const nid = String(node.id).trim();
-              const ntype = String(node.type).trim();
-              if (config.graph.allowedNodes.includes(ntype) && nid && !seenNodeIds.has(nid)) {
-                seenNodeIds.add(nid);
-                allNodes.push({ id: nid, type: ntype, text: nid });
-
-                // Add to Neo4j
-                await runQuery(
-                  `MERGE (n:\`${ntype}\` {id: $id}) SET n.text = $text`,
-                  { id: nid, text: nid }
-                );
-              }
-            }
-
-            for (const rel of (data.relationships || [])) {
-              const src = String(rel.source || '').trim();
-              const tgt = String(rel.target || '').trim();
-              const rtype = String(rel.type || '').trim();
-              if (config.graph.allowedRelationships.includes(rtype) && seenNodeIds.has(src) && seenNodeIds.has(tgt)) {
-                allRels.push({ source: src, target: tgt, type: rtype });
-                await runQuery(
-                  `MATCH (a {id: $src}), (b {id: $tgt})
-                   MERGE (a)-[r:\`${rtype}\`]->(b)`,
-                  { src, tgt }
-                );
-              }
-            }
-          }
-        } catch (e) {
-          console.error(`Chunk ${i} extraction failed:`, e.message);
-        }
-      }
-
-      // Save graph data
-      const graphData = {
-        nodes: allNodes.map(n => ({ id: n.id, type: n.type, properties: { text: n.text } })),
-        relationships: allRels.map(r => ({
-          source: r.source, target: r.target, type: r.type, properties: {},
-        })),
-      };
+      const graphData = await persistExtractionToNeo4j(extractedEntities, extractedRelations);
       await saveGraphData(fileHash, graphData);
 
-      // Mark document as processed
       await runQuery(
-        'CREATE (d:Document {name: $name, hash: $hash, processed: true})',
-        { name: fileName, hash: fileHash }
+        'CREATE (d:Document {name: $name, hash: $hash, processed: true, mode: $mode})',
+        { name: fileName, hash: fileHash, mode: analysisMode },
       );
     }
 
-    // Run data analysis pipeline
     const analysisResult = await runDataAnalysis(chunks, fileName);
 
     // Try loading graph data from cache
@@ -243,7 +246,21 @@ ${relHint}
       analysisResult.graphData = parseGraphDataForViz(cachedGraph);
     }
 
-    // Store in session state
+    analysisResult.mode = 'single';
+    analysisResult.analysisMode = analysisMode;
+    analysisResult.entities = extractedEntities;
+    analysisResult.relations = extractedRelations;
+    analysisResult.themeTags = appState.themeValidation?.themeTags || [];
+    analysisResult.fullText = fullText;
+
+    const enriched = enrichAnalysisResult(analysisResult, fullText, chunks);
+    Object.assign(analysisResult, enriched);
+    analysisResult.work1Metrics = computeWork1Metrics({
+      entities: analysisResult.entities,
+      relations: analysisResult.relations,
+      docs: chunks.map(c => c.text),
+    });
+
     appState.fileProcessed = true;
     appState.currentFile = fileName;
     appState.currentFileHash = fileHash;
@@ -353,6 +370,248 @@ router.get('/state', (req, res) => {
 router.post('/reset', (req, res) => {
   appState = {};
   res.json({ success: true });
+});
+
+// --- API: Batch upload to article library ---
+router.post('/upload-batch', upload.array('files', 20), async (req, res) => {
+  try {
+    const files = req.files || [];
+    if (!files.length) {
+      return res.status(400).json({ error: '未选择文件' });
+    }
+
+    const provider = req.body.llmProvider || 'deepseek';
+    const results = [];
+
+    for (const file of files) {
+      try {
+        const article = await ingestArticle(file.path, file.originalname, provider);
+        results.push({ success: true, article: { id: article.id, title: article.title, themeTags: article.themeTags } });
+      } catch (e) {
+        results.push({ success: false, fileName: file.originalname, error: e.message });
+      }
+      await fsp.unlink(file.path).catch(() => {});
+    }
+
+    res.json({ success: true, results, total: results.filter(r => r.success).length });
+  } catch (e) {
+    sendError(res, e, 'Batch upload error');
+  }
+});
+
+// --- API: List articles ---
+router.get('/articles', async (req, res) => {
+  try {
+    const index = await loadArticleIndex();
+    const filtered = filterArticles(index, {
+      themeTag: req.query.themeTag,
+      keyword: req.query.keyword,
+      minConfidence: req.query.minConfidence ? parseFloat(req.query.minConfidence) : undefined,
+    });
+    res.json({
+      articles: filtered.map(a => ({
+        id: a.id,
+        title: a.title,
+        date: a.date,
+        themeTags: a.themeTags,
+        themeConfidence: a.themeConfidence,
+        entityCount: a.entityCount,
+        relationCount: a.relationCount,
+        summary: (a.summary || '').slice(0, 150),
+      })),
+      total: filtered.length,
+    });
+  } catch (e) {
+    sendError(res, e, 'List articles error');
+  }
+});
+
+// --- API: Multi-article joint analysis ---
+router.post('/analyze-multi', async (req, res) => {
+  try {
+    const { articleIds, llmProvider } = req.body;
+    if (!articleIds?.length) {
+      return res.status(400).json({ error: '请选择至少 2 篇文章' });
+    }
+
+    const result = await runJointAnalysis(articleIds, llmProvider || 'deepseek');
+
+    const graphNodes = result.entities.map(e => ({
+      id: e.name || e.id,
+      type: e.type,
+      text: [e.name, e.summary].filter(Boolean).join(' — ').slice(0, 100),
+    }));
+    const graphLinks = result.relations.map(r => ({
+      source: r.source,
+      target: r.target,
+      type: r.type,
+    }));
+
+    const analysisResult = {
+      mode: 'multi',
+      fileName: `联合分析 (${result.articleCount} 篇)`,
+      articles: result.articles,
+      jointAnalysis: result.jointAnalysis,
+      themeSummary: result.themeSummary,
+      conflictEvolution: result.conflictEvolution,
+      entities: result.entities,
+      relations: result.relations,
+      work1Metrics: result.work1Metrics,
+      graphData: { nodes: graphNodes, links: graphLinks },
+      stats: {
+        meta: {
+          title: `多文联合分析 (${result.articleCount} 篇)`,
+          totalEntities: result.entities.length,
+          totalRelations: result.relations.length,
+        },
+        entityDistribution: result.work1Metrics.entityTypeDist,
+        relationDistribution: result.work1Metrics.relationTypeDist,
+      },
+      insights: [
+        `联合分析 **${result.articleCount}** 篇同主题文章`,
+        result.themeSummary ? `共同主题: **${result.themeSummary}**` : '',
+        result.conflictEvolution ? `冲突演化: ${result.conflictEvolution}` : '',
+      ].filter(Boolean),
+      analysisComplete: true,
+    };
+
+    appState.fileProcessed = true;
+    appState.currentFile = analysisResult.fileName;
+    appState.analysisResult = analysisResult;
+    appState.multiAnalysis = result;
+
+    res.json({ success: true, analysisResult });
+  } catch (e) {
+    sendError(res, e, 'Multi-article analysis error');
+  }
+});
+
+// --- API: Generate Jupyter Notebook ---
+router.post('/generate-notebook', async (req, res) => {
+  try {
+    const analysisResult = appState.analysisResult;
+    if (!analysisResult) {
+      return res.status(400).json({ error: '请先完成单文或多文分析' });
+    }
+
+    const { focusAreas, llmProvider } = req.body;
+    const result = await generateNotebook(analysisResult, {
+      focusAreas,
+      provider: llmProvider || 'deepseek',
+      mode: analysisResult.mode,
+    });
+
+    // 代码仅 ephemeral 下发给浏览器执行，服务端不存储
+    res.json({
+      success: true,
+      ephemeral: true,
+      notebook: result.notebook,
+      analysisData: result.analysisData,
+      source: result.source,
+      trace: result.trace || [],
+      profile: result.profile || null,
+      plan: result.plan || null,
+      validation: result.validation || [],
+    });
+  } catch (e) {
+    sendError(res, e, 'Notebook generation error');
+  }
+});
+
+// --- API: Finalize research report (after browser chart generation, NO code stored) ---
+router.post('/research-report/finalize', async (req, res) => {
+  try {
+    const analysisResult = appState.analysisResult;
+    if (!analysisResult) {
+      return res.status(400).json({ error: '请先完成文章分析' });
+    }
+
+    const { charts, executionLog, llmProvider } = req.body;
+    if (!charts?.length) {
+      return res.status(400).json({ error: '需要至少一张可视化图表' });
+    }
+
+    const analysisSummary = {
+      entityCount: analysisResult.entities?.length || analysisResult.stats?.meta?.totalEntities || 0,
+      relationCount: analysisResult.relations?.length || analysisResult.stats?.meta?.totalRelations || 0,
+      ruleEventCount: analysisResult.ruleMining?.eventCount || 0,
+      kddClusters: analysisResult.kdd?.clusterCount || 0,
+    };
+
+    const articles = analysisResult.articles || [{
+      title: analysisResult.stats?.meta?.title || appState.currentFile || '当前文档',
+    }];
+
+    const reportContent = await writeResearchReport({
+      title: analysisResult.mode === 'multi'
+        ? `多文联合研究报告 (${articles.length} 篇)`
+        : `研究报告: ${articles[0]?.title || '中东冲突分析'}`,
+      mode: analysisResult.mode || 'single',
+      articles,
+      analysisSummary,
+      chartDescriptions: charts.map(c => ({
+        title: c.title,
+        description: c.description,
+        stdout: c.stdout,
+      })),
+      executionLog,
+      profile: req.body.profile,
+      themeSummary: analysisResult.themeSummary || analysisResult.jointAnalysis?.themeSummary,
+      conflictEvolution: analysisResult.conflictEvolution || analysisResult.jointAnalysis?.conflictEvolution,
+    }, llmProvider || 'deepseek');
+
+    const saved = await saveResearchReport({
+      title: reportContent.title,
+      mode: analysisResult.mode || 'single',
+      markdown: reportContent.markdown,
+      highlights: reportContent.highlights,
+      riskLevel: reportContent.riskLevel,
+      reportSource: reportContent.source,
+      articles,
+      themeTags: analysisResult.themeTags || [],
+      analysisSummary,
+      charts: charts.map(c => ({
+        title: c.title,
+        imageBase64: c.imageBase64,
+      })),
+      fileHash: appState.currentFileHash || '',
+    });
+
+    res.json({
+      success: true,
+      report: saved,
+      markdown: reportContent.markdown,
+      highlights: reportContent.highlights,
+      riskLevel: reportContent.riskLevel,
+      reportSource: reportContent.source,
+    });
+  } catch (e) {
+    sendError(res, e, 'Finalize research report error');
+  }
+});
+
+// --- API: List research reports ---
+router.get('/research-reports', async (req, res) => {
+  try {
+    await ensureSchema();
+    const reports = await listResearchReports(parseInt(req.query.limit, 10) || 50);
+    res.json({ reports, total: reports.length });
+  } catch (e) {
+    sendError(res, e, 'List research reports error');
+  }
+});
+
+// --- API: Get single research report ---
+router.get('/research-reports/:id', async (req, res) => {
+  try {
+    const report = await getResearchReport(req.params.id);
+    if (!report) {
+      return res.status(404).json({ error: '报告不存在' });
+    }
+    res.json({ report });
+  } catch (e) {
+    sendError(res, e, 'Get research report error');
+  }
 });
 
 // Helper

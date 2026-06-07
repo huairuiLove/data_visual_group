@@ -1,8 +1,8 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-process.env.DOTENV_CONFIG_QUIET = process.env.DOTENV_CONFIG_QUIET || 'true';
-require('dotenv').config({ path: path.join(__dirname, '.env'), quiet: true });
+const { loadEnv } = require('./services/env-loader');
+loadEnv();
 
 const config = require('./config');
 const { router: apiRouter } = require('./routes/api');
@@ -12,8 +12,8 @@ const { sendError } = require('./services/errors');
 const app = express();
 
 // Middleware
-app.use(express.json({ limit: '5mb' }));
-app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 const isDev = process.env.NODE_ENV !== 'production';
 const vueDist = path.join(__dirname, 'client', 'dist');
@@ -46,9 +46,17 @@ app.use((err, req, res, _next) => {
 // Start
 const PORT = config.port;
 const HOST = config.host;
-const server = app.listen(PORT, HOST, () => {
+const { ensureSchema } = require('./services/research-report-db');
+
+const server = app.listen(PORT, HOST, async () => {
   console.log(`DataGraphX Node.js server running on http://${HOST}:${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  try {
+    await ensureSchema();
+    console.log('ResearchReport Neo4j schema ready');
+  } catch (e) {
+    console.warn('ResearchReport schema init skipped:', e.message);
+  }
 });
 
 server.on('error', (error) => {

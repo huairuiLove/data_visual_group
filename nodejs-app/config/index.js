@@ -1,6 +1,6 @@
 const path = require('path');
-process.env.DOTENV_CONFIG_QUIET = process.env.DOTENV_CONFIG_QUIET || 'true';
-require('dotenv').config({ path: path.join(__dirname, '..', '.env'), quiet: true });
+const { loadEnv } = require('../services/env-loader');
+loadEnv();
 
 const config = {
   neo4j: {
@@ -13,7 +13,8 @@ const config = {
     deepseek: {
       baseURL: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com',
       apiKey: process.env.DEEPSEEK_API_KEY || '',
-      model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
+      model: process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash',
+      codeModel: process.env.DEEPSEEK_CODE_MODEL || 'deepseek-v4-pro',
     },
     openai: {
       baseURL: process.env.OPENAI_BASE_URL || 'https://api.chatanywhere.tech/v1',
@@ -32,6 +33,11 @@ const config = {
   doc: {
     chunkSize: 1000,
     chunkOverlap: 40,
+  },
+
+  analysis: {
+    defaultMode: 'single_detailed', // single_detailed | multi_corpus
+    requireMiddleEastTheme: true,
   },
 
   graph: {

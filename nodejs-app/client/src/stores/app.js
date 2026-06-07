@@ -8,7 +8,8 @@ export const useAppStore = defineStore('app', () => {
   const neo4jConnected = ref(false)
   const fileProcessed = ref(false)
   const llmProvider = ref('deepseek')
-  const modelName = ref('deepseek-chat')
+  const modelName = ref('deepseek-v4-flash')
+  const analysisMode = ref('single_detailed')
   const apiKey = ref('')
   const currentFile = ref('')
   const currentFileHash = ref('')
@@ -27,6 +28,7 @@ export const useAppStore = defineStore('app', () => {
   const graphData = computed(() => analysisResult.value?.graphData || { nodes: [], links: [] })
   const edges = computed(() => analysisResult.value?.edges || [])
   const insights = computed(() => analysisResult.value?.insights || [])
+  const work1Metrics = computed(() => analysisResult.value?.work1Metrics || {})
 
   const isReady = computed(() => apiConfigured.value && neo4jConnected.value && fileProcessed.value)
 
@@ -80,6 +82,7 @@ export const useAppStore = defineStore('app', () => {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('llmProvider', llmProvider.value)
+      formData.append('analysisMode', analysisMode.value)
 
       const res = await api.upload('/upload', formData)
       if (res.success) {
@@ -105,6 +108,49 @@ export const useAppStore = defineStore('app', () => {
     await api.post('/reset', {})
   }
 
+  async function runMultiAnalysis(articleIds) {
+    loading.value = true
+    try {
+      const res = await api.post('/analyze-multi', {
+        articleIds,
+        llmProvider: llmProvider.value,
+      })
+      if (res.success) {
+        analysisResult.value = res.analysisResult
+        currentFile.value = res.analysisResult.fileName
+        fileProcessed.value = true
+      }
+      return res
+    } catch (e) {
+      error.value = e.message
+      return { success: false, error: e.message }
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function generateNotebook(focusAreas = []) {
+    return api.post('/generate-notebook', {
+      focusAreas,
+      llmProvider: llmProvider.value,
+    })
+  }
+
+  async function finalizeResearchReport(payload) {
+    return api.post('/research-report/finalize', {
+      ...payload,
+      llmProvider: llmProvider.value,
+    })
+  }
+
+  async function listResearchReports() {
+    return api.get('/research-reports')
+  }
+
+  async function getResearchReport(id) {
+    return api.get(`/research-reports/${id}`)
+  }
+
   async function askQuestion(question) {
     try {
       return await api.post('/qa', {
@@ -121,9 +167,11 @@ export const useAppStore = defineStore('app', () => {
     llmProvider, modelName, apiKey,
     currentFile, currentFileHash, analysisResult,
     loading, error,
+    analysisMode,
     stats, meta, entityData, keywordData, personData,
-    timeline, spatialData, graphData, edges, insights, isReady,
+    timeline, spatialData, graphData, edges, insights, work1Metrics, isReady,
     testLLM, testEmbeddings, connectNeo4j,
-    confirmSetup, uploadFile, reanalyze, askQuestion,
+    confirmSetup, uploadFile, reanalyze, runMultiAnalysis,
+    generateNotebook, finalizeResearchReport, listResearchReports, getResearchReport, askQuestion,
   }
 })

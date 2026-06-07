@@ -6,7 +6,8 @@ const store = useAppStore()
 
 // API Setup
 const provider = ref('deepseek')
-const modelName = ref('deepseek-chat')
+const modelName = ref('deepseek-v4-flash')
+const analysisMode = ref('single_detailed')
 const apiKey = ref('')
 const embedType = ref('local')
 const embedUrl = ref('http://localhost:11434/v1')
@@ -26,7 +27,7 @@ const uploadStatus = ref('')
 const fileInput = ref(null)
 
 watch(provider, (v) => {
-  modelName.value = v === 'deepseek' ? 'deepseek-chat' : 'gpt-4o-mini'
+  modelName.value = v === 'deepseek' ? 'deepseek-v4-flash' : 'gpt-4o-mini'
 })
 
 async function handleTestLLM() {
@@ -99,7 +100,12 @@ async function handleReanalyze() {
       </div>
       <div class="form-group">
         <label>模型名称</label>
-        <input v-model="modelName" type="text">
+        <select v-if="provider === 'deepseek'" v-model="modelName">
+          <option value="deepseek-v4-flash">deepseek-v4-flash (抽取/对话)</option>
+          <option value="deepseek-v4-pro">deepseek-v4-pro (代码生成)</option>
+          <option value="deepseek-chat">deepseek-chat (兼容)</option>
+        </select>
+        <input v-else v-model="modelName" type="text">
       </div>
       <button class="btn btn-outline" @click="handleTestLLM">测试 API 连接</button>
       <div v-if="testLlmStatus" class="status" :class="testLlmStatus.startsWith('Success') ? 'success' : 'error'">
@@ -159,7 +165,15 @@ async function handleReanalyze() {
     <!-- File Upload -->
     <section v-if="store.neo4jConnected" class="sidebar-section">
       <h3>上传文档</h3>
-      <input ref="fileInput" type="file" accept=".pdf,.docx,.txt" style="width:100%">
+      <div class="form-group">
+        <label>分析模式</label>
+        <select v-model="analysisMode" @change="store.analysisMode = analysisMode">
+          <option value="single_detailed">单文精细分析 (work1 schema)</option>
+          <option value="multi_corpus">多文轻量抽取</option>
+        </select>
+      </div>
+      <p class="hint-text">仅接受中东冲突相关新闻/文本 (txt, md, pdf, docx, csv, json)</p>
+      <input ref="fileInput" type="file" accept=".pdf,.docx,.txt,.md,.csv,.json" style="width:100%">
       <button class="btn btn-primary full-width" @click="handleUpload" :disabled="store.loading" style="margin-top:0.5rem;">
         {{ store.loading ? '处理中...' : '处理文档' }}
       </button>
@@ -218,5 +232,6 @@ details summary { font-weight: 600; }
 .progress-bar { width: 100%; height: 4px; background: var(--border); border-radius: 2px; margin-top: 0.5rem; overflow: hidden; }
 .progress-fill { height: 100%; background: var(--accent); width: 100%; animation: progress 2s ease-in-out infinite; }
 .full-width { width: 100%; }
+.hint-text { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.4rem; }
 @keyframes progress { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
 </style>

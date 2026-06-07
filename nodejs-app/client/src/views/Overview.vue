@@ -11,11 +11,19 @@ const relBar = ref(null)
 const docuburst = ref(null)
 const keywordChart = ref(null)
 const categoryChart = ref(null)
+const cooccurHeatmap = ref(null)
+const keywordNetwork = ref(null)
+const topEntitiesChart = ref(null)
+const semanticChart = ref(null)
 const { render: renderEntityPie } = usePlotly(entityPie)
 const { render: renderRelBar } = usePlotly(relBar)
 const { render: renderDocuburst } = usePlotly(docuburst, { layout: { height: 600 } })
 const { render: renderKeywords } = usePlotly(keywordChart, { layout: { height: 380, yaxis: { categoryorder: 'total ascending' } } })
 const { render: renderCategories } = usePlotly(categoryChart, { layout: { height: 380 } })
+const { render: renderCooccur } = usePlotly(cooccurHeatmap, { layout: { height: 450 } })
+const { render: renderKwNetwork } = usePlotly(keywordNetwork, { layout: { height: 450 } })
+const { render: renderTopEntities } = usePlotly(topEntitiesChart, { layout: { height: 380, yaxis: { categoryorder: 'total ascending' } } })
+const { render: renderSemantic } = usePlotly(semanticChart, { layout: { height: 400 } })
 
 function renderCharts() {
   if (!store.analysisResult) return
@@ -67,6 +75,76 @@ function renderCharts() {
   if (Object.keys(catDist).length) {
     renderCategories([{ type: 'pie', values: Object.values(catDist), labels: Object.keys(catDist), hole: 0.35, textposition: 'inside', textinfo: 'percent+label' }])
   }
+
+  // work1 metrics
+  const w1 = store.work1Metrics || {}
+
+  const topEnt = w1.topEntities || []
+  if (topEnt.length) {
+    renderTopEntities([{
+      type: 'bar', orientation: 'h',
+      x: topEnt.slice(0, 15).map(e => e.count),
+      y: topEnt.slice(0, 15).map(e => (e.name || '').slice(0, 20)),
+      marker: { color: '#55a868' },
+    }], { title: 'Top 实体 (work1 llm_03)', height: 380 })
+  }
+
+  const cooc = w1.cooccurrence || []
+  if (cooc.length >= 3) {
+    const entities = [...new Set(cooc.flatMap(c => [c.source, c.target]))].slice(0, 12)
+    const z = entities.map(() => entities.map(() => 0))
+    cooc.forEach(c => {
+      const i = entities.indexOf(c.source), j = entities.indexOf(c.target)
+      if (i >= 0 && j >= 0) { z[i][j] = c.weight; z[j][i] = c.weight }
+    })
+    renderCooccur([{
+      type: 'heatmap', x: entities.map(e => e.slice(0, 10)), y: entities.map(e => e.slice(0, 10)),
+      z, colorscale: 'YlOrRd',
+    }], { title: '实体共现热力图 (work1 llm_05)', height: 450 })
+  }
+
+  const landscape = store.analysisResult?.semanticLandscape
+  if (landscape?.points?.length) {
+    renderSemantic([{
+      type: 'scatter',
+      x: landscape.points.map(p => p.x),
+      y: landscape.points.map(p => p.y),
+      mode: 'markers+text',
+      text: landscape.points.map((_, i) => String(i + 1)),
+      textposition: 'top center',
+      marker: { size: 10, color: landscape.points.map(p => p.label), colorscale: 'Viridis', showscale: true },
+      hovertext: landscape.points.map(p => p.textPreview),
+      hoverinfo: 'text',
+    }], {
+      title: '语义景观 (SVD 2D, work1 adv_01)',
+      showlegend: false, height: 400,
+      xaxis: { showgrid: true, zeroline: false }, yaxis: { showgrid: true, zeroline: false },
+    })
+  }
+
+  const kwEdges = w1.keywordCooccurrence?.edges || []
+  const kwWords = w1.keywordCooccurrence?.keywords || []
+  if (kwEdges.length && kwWords.length) {
+    const terms = kwWords.slice(0, 12).map(k => k.term)
+    const pos = {}
+    terms.forEach((t, i) => {
+      const a = (i / terms.length) * Math.PI * 2
+      pos[t] = { x: Math.cos(a) * 3, y: Math.sin(a) * 3 }
+    })
+    const ex = [], ey = []
+    kwEdges.filter(e => pos[e.source] && pos[e.target]).forEach(e => {
+      ex.push(pos[e.source].x, pos[e.target].x, null)
+      ey.push(pos[e.source].y, pos[e.target].y, null)
+    })
+    renderKwNetwork([
+      { type: 'scatter', x: ex, y: ey, mode: 'lines', line: { width: 0.5, color: '#666' }, hoverinfo: 'none' },
+      { type: 'scatter', x: terms.map(t => pos[t]?.x), y: terms.map(t => pos[t]?.y), mode: 'markers+text',
+        text: terms, textposition: 'top center', marker: { size: 12, color: '#ff7f50' } },
+    ], { title: '关键词共现网络', showlegend: false, height: 450,
+      xaxis: { showgrid: false, zeroline: false, showticklabels: false },
+      yaxis: { showgrid: false, zeroline: false, showticklabels: false },
+    })
+  }
 }
 
 onMounted(renderCharts)
@@ -101,6 +179,26 @@ watch(() => store.analysisResult, renderCharts)
     <div class="chart-row">
       <div class="chart-half"><h4>文档关键词 (TF-IDF)</h4><div ref="keywordChart" class="chart"/></div>
       <div class="chart-half"><h4>事件类别分布</h4><div ref="categoryChart" class="chart"/></div>
+    </div>
+
+    <details open><summary>work1 风格分析 (Top 实体)</summary><div ref="topEntitiesChart" class="chart"/></details>
+
+    <details v-if="store.analysisResult?.semanticLandscape?.points?.length">
+      <summary>语义景观 (SVD 投影)</summary>
+      <div ref="semanticChart" class="chart"/>
+    </details>
+
+    <details v-if="store.analysisResult?.ruleMining?.chains?.length" open>
+      <summary>规则挖掘 — 冲突链 ({{ store.analysisResult.ruleMining.eventCount }} 事件)</summary>
+      <div class="kpi-row">
+        <KpiCard v-for="c in store.analysisResult.ruleMining.chains.slice(0, 4)" :key="c.chain"
+          :label="c.chain" :value="c.count" />
+      </div>
+    </details>
+
+    <div class="chart-row">
+      <div class="chart-half"><h4>实体共现热力图</h4><div ref="cooccurHeatmap" class="chart"/></div>
+      <div class="chart-half"><h4>关键词共现网络</h4><div ref="keywordNetwork" class="chart"/></div>
     </div>
 
     <h4>识别的人物名称</h4>
