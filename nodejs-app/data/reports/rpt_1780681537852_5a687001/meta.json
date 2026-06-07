@@ -1,0 +1,47 @@
+{
+  "id": "rpt_1780681537852_5a687001",
+  "title": "基于开源情报的中东冲突态势分析报告",
+  "mode": "single",
+  "createdAt": "2026-06-05T17:45:37.853Z",
+  "highlights": [
+    "36个实体与24组关系高度聚焦于以色列-伊朗冲突主轴，KDD聚类仅1簇，显示议题极度集中。",
+    "空袭（airstrike）作为核心行动词，与德黑兰、贝鲁特、霍尔木兹等地点强关联，预示多战线风险。",
+    "关系类型分布揭示攻击与隶属关系主导，代理人战争结构明显，态势处于高风险警戒状态。"
+  ],
+  "riskLevel": "medium",
+  "reportSource": "llm",
+  "articles": [
+    {
+      "title": "Iran Conflict Test"
+    }
+  ],
+  "themeTags": [
+    "Israel",
+    "Iran",
+    "Lebanon",
+    "Hormuz",
+    "Netanyahu",
+    "airstrike",
+    "Middle East",
+    "Tehran",
+    "Beirut"
+  ],
+  "analysisSummary": {
+    "entityCount": 36,
+    "relationCount": 24
+  },
+  "charts": [
+    {
+      "index": 0,
+      "title": "实体类型分布",
+      "filename": "chart_0.png",
+      "relativePath": "data/reports/rpt_1780681537852_5a687001/chart_0.png"
+    },
+    {
+      "index": 1,
+      "title": "关系类型分布",
+      "filename": "chart_1.png",
+      "relativePath": "data/reports/rpt_1780681537852_5a687001/chart_1.png"
+    }
+  ]
+}

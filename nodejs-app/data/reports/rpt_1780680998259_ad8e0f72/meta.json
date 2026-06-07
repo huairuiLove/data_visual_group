@@ -1,0 +1,46 @@
+{
+  "id": "rpt_1780680998259_ad8e0f72",
+  "title": "测试研究报告: Iran Conflict",
+  "mode": "single",
+  "createdAt": "2026-06-05T17:36:38.259Z",
+  "highlights": [
+    "实体类型分布",
+    "关系类型分布"
+  ],
+  "riskLevel": "medium",
+  "reportSource": "fallback",
+  "articles": [
+    {
+      "title": "Iran Conflict Test"
+    }
+  ],
+  "themeTags": [
+    "Israel",
+    "Iran",
+    "Lebanon",
+    "Hormuz",
+    "Netanyahu",
+    "airstrike",
+    "Middle East",
+    "Tehran",
+    "Beirut"
+  ],
+  "analysisSummary": {
+    "entityCount": 5,
+    "relationCount": 0
+  },
+  "charts": [
+    {
+      "index": 0,
+      "title": "实体类型分布",
+      "filename": "chart_0.png",
+      "relativePath": "data/reports/rpt_1780680998259_ad8e0f72/chart_0.png"
+    },
+    {
+      "index": 1,
+      "title": "关系类型分布",
+      "filename": "chart_1.png",
+      "relativePath": "data/reports/rpt_1780680998259_ad8e0f72/chart_1.png"
+    }
+  ]
+}
