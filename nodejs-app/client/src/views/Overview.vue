@@ -47,19 +47,39 @@ function renderCharts() {
     }], { height: 350, xaxis: { tickangle: -30 } })
   }
 
-  // DocuBurst
-  const allNodes = entityData?.allNodes || []
-  if (allNodes.length) {
-    const data = [{ id: 'root', labels: '全部文档', parent: '', value: allNodes.length }]
-    const typeCounts = {}, typeSet = new Set()
-    allNodes.forEach(n => {
-      const nt = n.type || 'Unknown', typeId = 'type_' + nt
-      typeSet.add(typeId)
-      typeCounts[typeId] = (typeCounts[typeId] || 0) + 1
-      data.push({ id: typeId, labels: nt, parent: 'root', value: 0 })
-      data.push({ id: 'e_' + n.id + '_' + nt, labels: ((n.text || n.id || '').slice(0, 20)), parent: typeId, value: 1 })
+  // DocuBurst — keyword → category → entity hierarchy
+  const topEnt = store.work1Metrics?.topEntities || []
+  const kwEdges = store.work1Metrics?.keywordCooccurrence?.edges || []
+  const kwWords = store.work1Metrics?.keywordCooccurrence?.keywords || []
+  if (topEnt.length || kwWords.length) {
+    const data = [{ id: 'root', labels: (store.meta?.title || '文档').slice(0, 15), parent: '', value: 0 }]
+    const total = topEnt.length + kwWords.length + Object.keys(keywordData?.categoryDistribution || {}).length
+
+    // Level 1: Categories
+    const cats = Object.entries(keywordData?.categoryDistribution || {})
+    cats.forEach(([cat, cnt]) => {
+      data.push({ id: 'cat_' + cat, labels: cat, parent: 'root', value: cnt })
     })
-    data.forEach(d => { if (typeSet.has(d.id)) d.value = typeCounts[d.id] || 0 })
+    if (!cats.length) data.push({ id: 'cat_主题', labels: '核心主题', parent: 'root', value: topEnt.length })
+
+    // Level 2: Top entities (under first category or "核心主题")
+    const parentCat = cats.length ? 'cat_' + cats[0][0] : 'cat_主题'
+    topEnt.slice(0, 10).forEach(e => {
+      const id = 'ent_' + (e.name || '').replace(/[^a-zA-Z\u4e00-\u9fa5]/g, '_').slice(0, 20)
+      data.push({ id, labels: (e.name || '').slice(0, 12), parent: parentCat, value: Math.max(1, e.count || 1) })
+    })
+
+    // Level 2: Keywords under "关键词" category
+    const kwCatId = 'cat_关键词'
+    data.push({ id: kwCatId, labels: '关键词', parent: 'root', value: kwWords.length })
+    kwWords.slice(0, 8).forEach(k => {
+      const id = 'kw_' + (k.term || '').replace(/[^a-zA-Z\u4e00-\u9fa5]/g, '_').slice(0, 20)
+      data.push({ id, labels: (k.term || '').slice(0, 10), parent: kwCatId, value: Math.max(1, k.score || 1) })
+    })
+
+    // Calculate root value
+    data[0].value = total
+
     renderDocuburst([{ type: 'sunburst', ids: data.map(d => d.id), labels: data.map(d => d.labels), parents: data.map(d => d.parent), values: data.map(d => d.value), branchvalues: 'total', textinfo: 'label+percent parent', maxdepth: 3 }])
   }
 
@@ -76,10 +96,7 @@ function renderCharts() {
     renderCategories([{ type: 'pie', values: Object.values(catDist), labels: Object.keys(catDist), hole: 0.35, textposition: 'inside', textinfo: 'percent+label' }])
   }
 
-  // work1 metrics
-  const w1 = store.work1Metrics || {}
-
-  const topEnt = w1.topEntities || []
+  // work1 metrics (topEnt, cooccurrence declared above)
   if (topEnt.length) {
     renderTopEntities([{
       type: 'bar', orientation: 'h',

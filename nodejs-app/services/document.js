@@ -40,6 +40,51 @@ function chunkText(text, chunkSize = config.doc.chunkSize, overlap = config.doc.
   return chunks;
 }
 
+/**
+ * Parse article front matter (Title, Date, Source, Summary, Article)
+ * Returns { meta, body } - works with plain text and markdown-ish formats
+ */
+function parseArticleMeta(rawText) {
+  const meta = { title: '', date: '', source: '', summary: '' };
+  let body = rawText;
+
+  const lines = rawText.split(/\r?\n/);
+  const headerEnd = lines.findIndex((_, i) => {
+    const line = lines[i].trim();
+    // Look for the "Article:" marker or a blank-line transition after headers
+    if (/^Article\s*:/i.test(line)) return true;
+    // If we've seen at least 2 meta fields and hit an empty line followed by long text
+    if (i > 4 && line === '' && i + 1 < lines.length && lines[i + 1].trim().length > 80) return true;
+    return false;
+  });
+
+  const headerLines = headerEnd >= 0 ? lines.slice(0, headerEnd + 1) : lines.slice(0, Math.min(8, lines.length));
+
+  for (const line of headerLines) {
+    const m = line.match(/^(Title|Date|Source|Summary|标题|日期|来源|摘要)\s*[:：]\s*(.+)/i);
+    if (m) {
+      const key = m[1].toLowerCase();
+      const val = m[2].trim();
+      if (key === 'title' || key === '标题') meta.title = val;
+      else if (key === 'date' || key === '日期') meta.date = val;
+      else if (key === 'source' || key === '来源') meta.source = val;
+      else if (key === 'summary' || key === '摘要') meta.summary = val;
+    }
+  }
+
+  // Body = everything after the Article: marker, or after first blank line post-headers
+  if (headerEnd >= 0) {
+    const articleMatch = lines[headerEnd].match(/^Article\s*[:：]\s*(.*)/i);
+    if (articleMatch && articleMatch[1]) {
+      body = lines.slice(headerEnd).join('\n').replace(/^Article\s*[:：]\s*/, '');
+    } else if (headerEnd + 1 < lines.length) {
+      body = lines.slice(headerEnd + 1).join('\n').trim();
+    }
+  }
+
+  return { meta, body: body || rawText };
+}
+
 async function processDocument(filePath, fileName) {
   const pages = await loadFile(filePath);
   const allChunks = [];
@@ -87,7 +132,7 @@ async function loadAppData() {
 }
 
 module.exports = {
-  loadFile, chunkText, processDocument,
+  loadFile, chunkText, processDocument, parseArticleMeta,
   generateFileHash, saveGraphData, loadGraphData, loadAppData,
   CACHE_DIR,
 };

@@ -64,54 +64,90 @@ function render3DDynamic() {
   const { nodes, links } = store.graphData
   if (!nodes.length) return
 
+  // Use semantic landscape data if available for X/Y positions
+  const landscape = store.analysisResult?.semanticLandscape
+  const kdd = store.analysisResult?.kdd
+
   const types = [...new Set(nodes.map(n => n.type))].sort()
   const colors = generateColors(types.length)
   const colorMap = {}
   types.forEach((t, i) => { colorMap[t] = colors[i] })
 
-  const angle = animFrame.value * 0.05
+  // Compute node degrees (importance) from links
+  const degrees = {}
+  links.forEach(l => {
+    const s = String(l.source || ''), t = String(l.target || '')
+    degrees[s] = (degrees[s] || 0) + 1; degrees[t] = (degrees[t] || 0) + 1
+  })
+
+  // Build positions: use semantic landscape if available, otherwise layout by type
   const positions = {}
-  nodes.forEach((n, i) => {
-    const a = (i / nodes.length) * Math.PI * 2 + angle
-    const r = 1.2 + (i % 3) * 0.3
-    positions[n.id] = {
-      x: Math.cos(a) * r,
-      y: Math.sin(a) * r,
-      z: Math.sin(a * 2 + angle) * 0.8,
+  const nodeList = nodes.map((n, i) => {
+    const id = String(n.id || '')
+    // Try to match with semantic landscape point
+    const semPt = landscape?.points?.find(p =>
+      (p.label || '').includes(n.type) || (p.label || '').includes(id.slice(0, 4))
+    )
+    const degree = degrees[id] || 1
+    return {
+      id, type: n.type, text: n.text || id,
+      x: semPt ? semPt.x * 3 : (Math.cos((i / nodes.length) * Math.PI * 2) * (1 + (i % 3) * 0.3)),
+      y: semPt ? semPt.y * 3 : (Math.sin((i / nodes.length) * Math.PI * 2) * (1 + (i % 3) * 0.3)),
+      z: semPt ? degree * 0.6 : (Math.sin((i / nodes.length) * Math.PI * 4) * 0.8),
+      degree,
+      clusterLabel: kdd?.labels?.[Math.min(i, kdd.labels.length - 1)] ?? null,
     }
   })
 
+  nodeList.forEach(n => { positions[n.id] = n })
+
   const ex = [], ey = [], ez = []
   links.forEach(l => {
-    const s = positions[l.source], t = positions[l.target]
+    const s = positions[String(l.source)], t = positions[String(l.target)]
     if (s && t) { ex.push(s.x, t.x, null); ey.push(s.y, t.y, null); ez.push(s.z, t.z, null) }
   })
 
   const traces = [{
     type: 'scatter3d', x: ex, y: ey, z: ez, mode: 'lines',
-    line: { width: 1 + Math.sin(angle) * 0.5, color: '#666' }, hoverinfo: 'none', name: '关系',
+    line: { width: 0.6, color: '#666' }, hoverinfo: 'none', name: '关系',
   }]
 
   types.forEach(t => {
-    const tn = nodes.filter(n => n.type === t)
+    const tn = nodeList.filter(n => n.type === t)
     if (!tn.length) return
     traces.push({
-      type: 'scatter3d', mode: 'markers',
-      x: tn.map(n => positions[n.id]?.x || 0),
-      y: tn.map(n => positions[n.id]?.y || 0),
-      z: tn.map(n => positions[n.id]?.z || 0),
+      type: 'scatter3d', mode: 'markers+text',
+      x: tn.map(n => n.x),
+      y: tn.map(n => n.y),
+      z: tn.map(n => n.z),
+      text: tn.map(n => (n.text || '').slice(0, 8)),
+      textposition: 'top center',
+      textfont: { size: 9, color: '#ccc' },
       name: `${t} (${tn.length})`,
-      marker: { size: 6 + Math.sin(angle) * 2, color: colorMap[t], opacity: 0.9 },
-      hovertext: tn.map(n => `<b>${escapeHtml((n.id||'').slice(0, 20))}</b>`),
+      marker: {
+        size: tn.map(n => 5 + Math.log2(n.degree + 1) * 4),
+        color: colorMap[t],
+        opacity: 0.85,
+        line: { width: 0.5, color: '#fff' },
+      },
+      hovertext: tn.map(n => {
+        const cluster = n.clusterLabel !== null ? `<br>群集: ${n.clusterLabel}` : ''
+        return `<b>${escapeHtml((n.text||'').slice(0, 30))}</b><br>类型: ${escapeHtml(n.type)}<br>关联数: ${n.degree}${cluster}`
+      }),
       hoverinfo: 'text',
     })
   })
 
+  const angle = animFrame.value * 0.03
   render3d(traces, {
-    title: '3D 动态态势图谱',
+    title: landscape?.points?.length
+      ? '3D 语义聚类空间 (X/Y=语义坐标, Z=实体重要度)'
+      : '3D 实体关系空间 (节点大小=关联度)',
     scene: {
-      camera: { eye: { x: 1.5 * Math.cos(angle), y: 1.5 * Math.sin(angle), z: 1.2 } },
-      xaxis: { showticklabels: false }, yaxis: { showticklabels: false }, zaxis: { showticklabels: false },
+      camera: { eye: { x: 2.5 * Math.cos(angle), y: 2.5 * Math.sin(angle), z: 1.2 } },
+      xaxis: { showticklabels: false, title: landscape ? '语义 X' : '' },
+      yaxis: { showticklabels: false, title: landscape ? '语义 Y' : '' },
+      zaxis: { showticklabels: false, title: '关联度' },
     },
   })
 }

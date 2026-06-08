@@ -119,15 +119,35 @@ function render3dGraph() {
   const colorMap = {}
   types.forEach((t, i) => { colorMap[t] = colors[i] })
 
-  const positions = {}
-  nodes.forEach((n, i) => {
-    const a = (i/nodes.length)*Math.PI*2, r = 1 + Math.random()*0.5
-    positions[n.id] = { x: Math.cos(a)*r, y: Math.sin(a)*r, z: (Math.random()-0.5)*2 }
+  // Compute degree for sizing
+  const adj = {}
+  const degrees = {}
+  nodes.forEach(n => { adj[n.id] = []; degrees[n.id] = 0 })
+  links.forEach(l => {
+    if (adj[l.source]) adj[l.source].push(l.target)
+    if (adj[l.target]) adj[l.target].push(l.source)
+    degrees[l.source] = (degrees[l.source] || 0) + 1
+    degrees[l.target] = (degrees[l.target] || 0) + 1
   })
 
-  const adj = {}
-  nodes.forEach(n => { adj[n.id] = [] })
-  links.forEach(l => { if (adj[l.source]) adj[l.source].push(l.target); if (adj[l.target]) adj[l.target].push(l.source) })
+  // Use semantic landscape for X/Y if available, with degree as Z
+  const landscape = store.analysisResult?.semanticLandscape
+  const positions = {}
+  const nodeList = nodes.map((n, i) => {
+    const id = String(n.id || '')
+    const deg = degrees[id] || 1
+    // Try semantic matching
+    const semPt = landscape?.points?.find(p =>
+      (p.label || '').includes(n.type) || (p.label || '').includes(id.slice(0, 4))
+    )
+    return {
+      id, type: n.type, text: n.text || id, deg,
+      x: semPt ? semPt.x * 3 : Math.cos((i / nodes.length) * Math.PI * 2) * (1 + Math.sin(i * 0.5) * 0.3),
+      y: semPt ? semPt.y * 3 : Math.sin((i / nodes.length) * Math.PI * 2) * (1 + Math.cos(i * 0.5) * 0.3),
+      z: deg * 0.5,
+    }
+  })
+  nodeList.forEach(n => { positions[n.id] = n })
 
   const ex = [], ey = [], ez = []
   links.forEach(l => {
@@ -135,28 +155,38 @@ function render3dGraph() {
     if (s && t) { ex.push(s.x, t.x, null); ey.push(s.y, t.y, null); ez.push(s.z, t.z, null) }
   })
 
-  const traces = [{ type: 'scatter3d', x: ex, y: ey, z: ez, mode: 'lines', line: { width: 0.6, color: '#666' }, hoverinfo: 'none', name: '关系' }]
+  const traces = [{
+    type: 'scatter3d', x: ex, y: ey, z: ez, mode: 'lines',
+    line: { width: 0.5, color: '#555' }, hoverinfo: 'none', name: '关系',
+  }]
 
   types.forEach(t => {
-    const tn = nodes.filter(n => n.type === t)
+    const tn = nodeList.filter(n => n.type === t)
     if (!tn.length) return
     traces.push({
-      type: 'scatter3d', mode: 'markers',
-      x: tn.map(n => positions[n.id]?.x || 0),
-      y: tn.map(n => positions[n.id]?.y || 0),
-      z: tn.map(n => positions[n.id]?.z || 0),
+      type: 'scatter3d', mode: 'markers+text',
+      x: tn.map(n => n.x), y: tn.map(n => n.y), z: tn.map(n => n.z),
+      text: tn.map(n => (n.text || '').slice(0, 8)),
+      textposition: 'top center', textfont: { size: 8, color: '#bbb' },
       name: `${t} (${tn.length})`,
-      marker: { size: tn.map(n => 5 + (adj[n.id]?.length||0)*2), color: colorMap[t], opacity: 0.9 },
-      hovertext: tn.map(n => `<b>${escapeHtml((n.id||'').slice(0,25))}</b><br>${escapeHtml(n.type)}`), hoverinfo: 'text',
+      marker: {
+        size: tn.map(n => 4 + Math.log2(n.deg + 1) * 3),
+        color: colorMap[t],
+        opacity: 0.9,
+        line: { width: 0.5, color: '#fff' },
+      },
+      hovertext: tn.map(n => `<b>${escapeHtml((n.text||'').slice(0, 30))}</b><br>类型: ${escapeHtml(n.type)}<br>关联数: ${n.deg}`),
+      hoverinfo: 'text',
     })
   })
 
   render3d(traces, {
+    title: landscape?.points?.length ? '3D 语义空间 (X/Y=语义, Z=重要度)' : '3D 实体空间 (Z轴=关联度)',
     scene: {
       xaxis: { showticklabels: false, showgrid: true, gridcolor: 'rgba(255,255,255,0.05)' },
       yaxis: { showticklabels: false, showgrid: true, gridcolor: 'rgba(255,255,255,0.05)' },
       zaxis: { showticklabels: false, showgrid: true, gridcolor: 'rgba(255,255,255,0.05)' },
-      camera: { eye: { x: 1.5, y: 1.5, z: 1.5 } },
+      camera: { eye: { x: 1.8, y: 1.8, z: 1.2 } },
     },
     legend: { x: 0.01, y: 0.99, bgcolor: 'rgba(0,0,0,0.5)' },
   })

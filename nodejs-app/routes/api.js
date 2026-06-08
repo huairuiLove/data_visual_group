@@ -8,7 +8,7 @@ const { runQuery } = require('../services/neo4j');
 const { chat, testConnection } = require('../services/llm');
 const { LocalEmbeddings, testEmbeddings } = require('../services/embeddings');
 const {
-  processDocument, generateFileHash, saveGraphData, loadGraphData,
+  processDocument, parseArticleMeta, generateFileHash, saveGraphData, loadGraphData,
 } = require('../services/document');
 const { runDataAnalysis } = require('../analysis/pipeline');
 const { computeWork1Metrics, enrichAnalysisResult } = require('../analysis/work1-metrics');
@@ -189,6 +189,16 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     const needProcessing = existing.length === 0;
     const chunks = await processDocument(filePath, fileName);
     const fullText = chunks.map(c => c.text).join('\n');
+    const articleMeta = parseArticleMeta(fullText);
+    // Use parsed body for extraction if available, otherwise full text
+    const bodyText = articleMeta.body && articleMeta.body.length > 100
+      ? articleMeta.body
+      : fullText;
+    // Re-chunk from the parsed body
+    const { chunkText } = require('../services/document');
+    const bodyChunks = bodyText !== fullText
+      ? chunkText(bodyText).map((text, i) => ({ text, source: fileName, index: i }))
+      : chunks;
 
     if (config.analysis.requireMiddleEastTheme) {
       const theme = await validateMiddleEastTheme(fullText, provider);
@@ -221,9 +231,11 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     }
 
     if (needProcessing) {
-      const extraction = await extractFromChunks(chunks, analysisMode, provider, {
-        title: fileName,
-        date: new Date().toISOString().slice(0, 10),
+      const extraction = await extractFromChunks(bodyChunks, analysisMode, provider, {
+        title: articleMeta.title || fileName,
+        date: articleMeta.date || new Date().toISOString().slice(0, 10),
+        source: articleMeta.source || '',
+        summary: articleMeta.summary || '',
       });
       const canon = applyCanonicalization(extraction.entities, extraction.relations);
       extractedEntities = canon.entities;
