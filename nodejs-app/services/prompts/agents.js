@@ -17,7 +17,7 @@ const PROFILER_SYSTEM = `你是数据分析专家 Agent（DataProfiler）。
   "kdd_highlights": {"top_topic_terms":[], "cluster_count":N},
   "recommended_focus": ["建议可视化方向1"],
   "analysis_narrative": "100字数据摘要"
-}`;
+}`
 
 const PLANNER_SYSTEM = `你是可视化规划专家 Agent（VizPlanner）。
 任务：根据 DataProfiler 的数据画像，规划 Jupyter Notebook 可视化方案。
@@ -45,7 +45,7 @@ work1 图表目录:
   ],
   "skip_charts": [{"chart":"", "reason":""}],
   "expected_outputs": 6
-}`;
+}`
 
 const CODER_SYSTEM = `你是 Python 可视化工程师 Agent（CodeWriter）。
 任务：根据 VizPlanner 的 cells_plan，编写可在 Pyodide 浏览器端执行的 Jupyter Notebook。
@@ -61,7 +61,7 @@ const CODER_SYSTEM = `你是 Python 可视化工程师 Agent（CodeWriter）。
 - 共现热力图用 matplotlib imshow + 自定义 labels，不要用 seaborn（Pyodide 兼容差）
 
 输出纯 JSON nbformat 4.5:
-{"nbformat":4,"nbformat_minor":5,"metadata":{...},"cells":[...]}`;
+{"nbformat":4,"nbformat_minor":5,"metadata":{...},"cells":[...]}`
 
 const REVIEWER_SYSTEM = `你是代码审查专家 Agent（CodeReviewer）。
 任务：审查 CodeWriter 生成的 Notebook，确保能在 Pyodide 浏览器端正确执行。
@@ -80,7 +80,7 @@ const REVIEWER_SYSTEM = `你是代码审查专家 Agent（CodeReviewer）。
   "issues_found": ["问题1"],
   "fixes_applied": ["修复1"],
   "notebook": {nbformat完整对象}
-}`;
+}`
 
 function buildProfilerUserPrompt(analysisData) {
   const summary = {
@@ -93,26 +93,28 @@ function buildProfilerUserPrompt(analysisData) {
     kdd: analysisData.kdd,
     cooccurrence_count: analysisData.cooccurrence?.length,
     theme_summary: analysisData.themeSummary,
-  };
-  return `用户上传文章的分析数据（非爬虫，仅上传内容）:\n${JSON.stringify(summary, null, 2).slice(0, 8000)}`;
+  }
+  return `用户上传文章的分析数据（非爬虫，仅上传内容）:\n${JSON.stringify(summary, null, 2).slice(0, 8000)}`
 }
 
 function buildPlannerUserPrompt(profile, focusAreas) {
-  return `数据画像:\n${JSON.stringify(profile, null, 2)}\n\n用户关注: ${(focusAreas || []).join(', ') || '全面分析'}\n请规划 6-8 个可视化 cell。`;
+  return `数据画像:\n${JSON.stringify(profile, null, 2)}\n\n用户关注: ${(focusAreas || []).join(', ') || '全面分析'}\n请规划 6-8 个可视化 cell。`
 }
 
-function buildCoderUserPrompt(plan, analysisDataSchema) {
-  return `可视化规划:\n${JSON.stringify(plan, null, 2)}\n\nanalysis_data 可用字段: entities, relations, eventCategories, cooccurrence, relationTriples, ruleMining, kdd, articles, themeSummary, conflictEvolution, semanticLandscape\n\n请生成完整 Notebook JSON。`;
+function buildCoderUserPrompt(plan, _analysisDataSchema) {
+  return `可视化规划:\n${JSON.stringify(plan, null, 2)}\n\nanalysis_data 可用字段: entities, relations, eventCategories, cooccurrence, relationTriples, ruleMining, kdd, articles, themeSummary, conflictEvolution, semanticLandscape\n\n请生成完整 Notebook JSON。`
 }
 
 function buildReviewerUserPrompt(notebook) {
   const preview = {
     cell_count: notebook.cells?.length,
-    code_cells: (notebook.cells || []).filter(c => c.cell_type === 'code').map(c => ({
-      source: (Array.isArray(c.source) ? c.source.join('') : c.source).slice(0, 500),
-    })),
-  };
-  return `待审查 Notebook 预览:\n${JSON.stringify(preview, null, 2)}\n\n完整 Notebook:\n${JSON.stringify(notebook).slice(0, 12000)}`;
+    code_cells: (notebook.cells || [])
+      .filter((c) => c.cell_type === 'code')
+      .map((c) => ({
+        source: (Array.isArray(c.source) ? c.source.join('') : c.source).slice(0, 500),
+      })),
+  }
+  return `待审查 Notebook 预览:\n${JSON.stringify(preview, null, 2)}\n\n完整 Notebook:\n${JSON.stringify(notebook).slice(0, 12000)}`
 }
 
 module.exports = {
@@ -124,4 +126,4 @@ module.exports = {
   buildPlannerUserPrompt,
   buildCoderUserPrompt,
   buildReviewerUserPrompt,
-};
+}

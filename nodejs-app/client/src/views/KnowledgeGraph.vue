@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useAppStore } from '../stores/app'
 import { usePlotly, generateColors } from '../composables/usePlotly'
 import { useFisheye, useForceGraph } from '../composables/useFisheye'
@@ -33,8 +33,8 @@ const filteredData = computed(() => {
   if (!selectedTypes.value.length) return store.graphData
   const sel = new Set(selectedTypes.value)
   const nodes = store.graphData.nodes.filter(n => sel.has(n.type))
-  const ids = new Set(nodes.map(n => n.id))
-  const links = store.graphData.links.filter(l => ids.has(l.source) && ids.has(l.target))
+  const ids = new Set(nodes.map(n => String(n.id)))
+  const links = store.graphData.links.filter(l => ids.has(String(l.source)) && ids.has(String(l.target)))
   return { nodes, links }
 })
 
@@ -214,7 +214,6 @@ function toggleType(type) {
   const idx = selectedTypes.value.indexOf(type)
   if (idx >= 0) selectedTypes.value.splice(idx, 1)
   else selectedTypes.value.push(type)
-  updateViz()
 }
 
 // Init
@@ -226,6 +225,8 @@ watch(() => store.graphData, (data) => {
 }, { immediate: true })
 
 watch(vizMode, updateViz)
+watch(selectedTypes, updateViz, { deep: true })
+onMounted(updateViz)
 </script>
 
 <template>

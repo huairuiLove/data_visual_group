@@ -27,7 +27,7 @@ const { render: renderSemantic } = usePlotly(semanticChart, { layout: { height: 
 
 function renderCharts() {
   if (!store.analysisResult) return
-  const { stats, entityData, keywordData } = store
+  const { stats, keywordData } = store
 
   // Entity pie
   const entityDist = stats?.entityDistribution || {}

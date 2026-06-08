@@ -29,14 +29,42 @@ async function openReport(id) {
   }
 }
 
-function renderMarkdown(md) {
-  if (!md) return ''
-  return md
-    .replace(/^### (.+)$/gm, '<h4>$1</h4>')
-    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^# (.+)$/gm, '<h2>$1</h2>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\n/g, '<br>')
+function parseInline(text) {
+  const segments = []
+  const pattern = /\*\*(.+?)\*\*/g
+  let lastIndex = 0
+  let match
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ type: 'text', text: text.slice(lastIndex, match.index) })
+    }
+    segments.push({ type: 'strong', text: match[1] })
+    lastIndex = pattern.lastIndex
+  }
+  if (lastIndex < text.length) {
+    segments.push({ type: 'text', text: text.slice(lastIndex) })
+  }
+  return segments.length ? segments : [{ type: 'text', text }]
+}
+
+function markdownBlocks(md) {
+  if (!md) return []
+  return md.split(/\n+/).map((line, index) => {
+    const trimmed = line.trim()
+    const heading = /^(#{1,3})\s+(.+)$/.exec(trimmed)
+    if (heading) {
+      return {
+        id: `${index}-${trimmed}`,
+        type: `h${Math.min(heading[1].length + 1, 4)}`,
+        segments: parseInline(heading[2]),
+      }
+    }
+    return {
+      id: `${index}-${trimmed}`,
+      type: 'p',
+      segments: parseInline(trimmed),
+    }
+  }).filter(block => block.segments.some(segment => segment.text))
 }
 
 onMounted(loadReports)
@@ -82,7 +110,18 @@ onMounted(loadReports)
             <img v-if="c.imageBase64" :src="`data:image/png;base64,${c.imageBase64}`" alt="chart">
           </div>
         </div>
-        <article class="report-body" v-html="renderMarkdown(selected.markdown)"/>
+        <article class="report-body">
+          <component
+            :is="block.type"
+            v-for="block in markdownBlocks(selected.markdown)"
+            :key="block.id"
+          >
+            <template v-for="(segment, i) in block.segments" :key="i">
+              <strong v-if="segment.type === 'strong'">{{ segment.text }}</strong>
+              <span v-else>{{ segment.text }}</span>
+            </template>
+          </component>
+        </article>
       </main>
       <main v-else class="detail empty-detail">
         <p>← 选择一份报告查看</p>

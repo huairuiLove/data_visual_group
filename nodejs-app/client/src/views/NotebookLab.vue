@@ -134,7 +134,6 @@ async function runFullPipeline() {
   }
 }
 
-const cellCount = computed(() => ephemeralNotebook.value?.cells?.length || 0)
 const hasSavedReport = computed(() => !!savedReport.value?.id)
 </script>
 

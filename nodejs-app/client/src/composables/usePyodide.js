@@ -85,7 +85,7 @@ figs
 
   async function runNotebook(notebook, analysisData, onProgress) {
     const results = []
-    const pyodide = await loadPyodide()
+    await loadPyodide()
 
     for (let i = 0; i < notebook.cells.length; i++) {
       const cell = notebook.cells[i]
