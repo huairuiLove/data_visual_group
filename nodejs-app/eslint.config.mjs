@@ -8,6 +8,8 @@ export default [
       'node_modules/**',
       'client/node_modules/**',
       'client/dist/**',
+      'client/.nuxt/**',
+      'client/.output/**',
       'data/**',
     ],
   },
@@ -15,7 +17,7 @@ export default [
   ...vue.configs['flat/essential'],
   {
     files: ['**/*.js'],
-    ignores: ['client/src/**', 'client/vite.config.js'],
+    ignores: ['client/src/**', 'client/nuxt.config.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'commonjs',
@@ -27,7 +29,8 @@ export default [
     },
   },
   {
-    files: ['client/src/**/*.{js,vue}', 'client/vite.config.js'],
+    files: ['client/src/**/*.{js,vue}', 'client/nuxt.config.js'],
+    ignores: ['client/src/server/**'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
@@ -41,6 +44,21 @@ export default [
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'vue/multi-word-component-names': 'off',
       'vue/no-v-html': 'error',
+    },
+  },
+  {
+    files: ['client/src/server/**/*.js', 'client/nuxt.config.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        ...globals.node,
+        ...globals.es2022,
+      },
+    },
+    rules: {
+      'no-console': 'off',
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
     },
   },
 ]

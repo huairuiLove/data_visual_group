@@ -9,8 +9,9 @@
   ],
   "scripts": {
     "build": "bun run --cwd nodejs-app/client build",
-    "dev": "bun run build && bun run --cwd nodejs-app dev",
-    "start": "bun run --cwd nodejs-app start",
+    "dev": "bun run --cwd nodejs-app/client dev",
+    "dev:ui": "bun run --cwd nodejs-app/client dev",
+    "start": "bun run --cwd nodejs-app/client preview",
     "lint": "bun run --cwd nodejs-app lint",
     "test:notebook": "bun run --cwd nodejs-app test:notebook",
     "test:notebook:offline": "bun run --cwd nodejs-app test:notebook:offline",

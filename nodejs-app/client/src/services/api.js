@@ -1,32 +1,51 @@
-const BASE_URL = '/api'
+const DEFAULT_BASE_URL = '/api'
 
-async function request(method, path, body) {
-  const opts = {
-    method,
-    headers: body instanceof FormData ? {} : { 'Content-Type': 'application/json' },
+export class ApiError extends Error {
+  constructor(message, { status, payload } = {}) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.payload = payload
   }
-  if (body) {
-    opts.body = body instanceof FormData ? body : JSON.stringify(body)
-  }
-  const resp = await fetch(`${BASE_URL}${path}`, opts)
+}
+
+function normalizePath(path) {
+  return path.startsWith('/') ? path : `/${path}`
+}
+
+async function parsePayload(resp) {
   const contentType = resp.headers.get('content-type') || ''
-  const payload = contentType.includes('application/json')
-    ? await resp.json()
-    : { message: await resp.text() }
+  if (contentType.includes('application/json')) return resp.json()
+  return { message: await resp.text() }
+}
 
-  if (!resp.ok) {
-    const message = payload?.error?.message || payload?.message || `Request failed with status ${resp.status}`
-    const error = new Error(message)
-    error.status = resp.status
-    error.payload = payload
-    throw error
+export function createApiClient({ baseURL = DEFAULT_BASE_URL, fetchImpl = globalThis.fetch } = {}) {
+  async function request(method, path, body) {
+    const opts = {
+      method,
+      headers: body instanceof FormData ? {} : { 'Content-Type': 'application/json' },
+    }
+
+    if (body) {
+      opts.body = body instanceof FormData ? body : JSON.stringify(body)
+    }
+
+    const resp = await fetchImpl(`${baseURL}${normalizePath(path)}`, opts)
+    const payload = await parsePayload(resp)
+
+    if (!resp.ok) {
+      const message = payload?.error?.message || payload?.error || payload?.message || `Request failed with status ${resp.status}`
+      throw new ApiError(message, { status: resp.status, payload })
+    }
+
+    return payload
   }
 
-  return payload
+  return {
+    get: (path) => request('GET', path),
+    post: (path, body) => request('POST', path, body),
+    upload: (path, formData) => request('POST', path, formData),
+  }
 }
 
-export const api = {
-  get: (path) => request('GET', path),
-  post: (path, body) => request('POST', path, body),
-  upload: (path, formData) => request('POST', path, formData),
-}
+export const api = createApiClient()

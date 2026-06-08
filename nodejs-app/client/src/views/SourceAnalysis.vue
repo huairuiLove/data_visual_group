@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useAppStore } from '../stores/app'
 import { usePlotly } from '../composables/usePlotly'
 import KpiCard from '../components/KpiCard.vue'
@@ -69,6 +69,7 @@ function renderCharts() {
 }
 
 onMounted(renderCharts)
+watch(() => [store.stats, store.edges], renderCharts, { deep: true })
 </script>
 
 <template>

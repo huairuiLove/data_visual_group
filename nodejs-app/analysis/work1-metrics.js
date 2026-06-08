@@ -439,21 +439,49 @@ function enrichAnalysisResult(analysisResult, fullText, chunks) {
 }
 
 function buildNotebookAnalysisData(analysisResult, options = {}) {
-  const entities = analysisResult.entities || analysisResult.entityData?.allNodes || []
-  const relations =
-    analysisResult.relations ||
-    analysisResult.edges?.map((e) => ({
-      source: e.source_id || e.source,
-      target: e.target_id || e.target,
-      type: e.relation || e.type,
-      count: 1,
-    })) ||
-    []
+  const graphNodes = analysisResult.graphData?.nodes || []
+  const graphLinks = analysisResult.graphData?.links || []
+  const entities =
+    analysisResult.entities?.length
+      ? analysisResult.entities
+      : analysisResult.entityData?.allNodes?.length
+        ? analysisResult.entityData.allNodes
+        : graphNodes.map((n) => ({
+            id: n.id,
+            name: n.name || n.label || n.id,
+            type: n.type,
+            summary: n.text || n.summary || '',
+            count: n.count || 1,
+          }))
+  const relations = analysisResult.relations?.length
+    ? analysisResult.relations
+    : analysisResult.edges?.length
+      ? analysisResult.edges.map((e) => ({
+          source: e.source_id || e.source,
+          target: e.target_id || e.target,
+          type: e.relation || e.type,
+          count: 1,
+        }))
+      : graphLinks.map((l) => ({
+          source: typeof l.source === 'object' ? l.source.id : l.source,
+          target: typeof l.target === 'object' ? l.target.id : l.target,
+          type: l.type || l.relation || 'RELATED_TO',
+          count: l.count || 1,
+        }))
 
   const docs =
     analysisResult.lcDocsTexts || analysisResult.docs || [analysisResult.fullText || ''].filter(Boolean)
 
-  const metrics = analysisResult.work1Metrics || computeWork1Metrics({ entities, relations, docs })
+  const computedMetrics = computeWork1Metrics({ entities, relations, docs })
+  const existingMetrics = analysisResult.work1Metrics || {}
+  const metrics =
+    existingMetrics.topEntities?.length ||
+    existingMetrics.cooccurrence?.length ||
+    existingMetrics.relationTriples?.length ||
+    Object.keys(existingMetrics.entityTypeDist || {}).length ||
+    Object.keys(existingMetrics.relationTypeDist || {}).length
+      ? existingMetrics
+      : computedMetrics
 
   return {
     mode: analysisResult.mode || options.mode || 'single',

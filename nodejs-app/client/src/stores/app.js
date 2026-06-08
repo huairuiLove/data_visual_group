@@ -1,20 +1,63 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { api } from '../services/api'
 
+const PERSIST_KEY = 'datagraphx.app.v1'
+
+function loadPersistedState() {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = window.localStorage.getItem(PERSIST_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+function withoutLargeText(result) {
+  if (!result) return null
+  const rest = { ...result }
+  delete rest.fullText
+  return rest
+}
+
+function savePersistedState(state) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(PERSIST_KEY, JSON.stringify(state))
+  } catch {
+    const compactState = {
+      ...state,
+      analysisResult: withoutLargeText(state.analysisResult),
+    }
+    try {
+      window.localStorage.setItem(PERSIST_KEY, JSON.stringify(compactState))
+    } catch {
+      // Ignore quota errors; the next smaller analysis result can still persist.
+    }
+  }
+}
+
+function clearPersistedState() {
+  if (typeof window === 'undefined') return
+  window.localStorage.removeItem(PERSIST_KEY)
+}
+
 export const useAppStore = defineStore('app', () => {
+  const persisted = loadPersistedState()
+
   // State
-  const apiConfigured = ref(false)
-  const neo4jConnected = ref(false)
-  const fileProcessed = ref(false)
-  const llmProvider = ref('openai-compatible')
-  const baseURL = ref('http://localhost:1234/v1')
-  const modelName = ref('qwen3-14b')
-  const analysisMode = ref('single_detailed')
+  const apiConfigured = ref(Boolean(persisted.apiConfigured))
+  const neo4jConnected = ref(Boolean(persisted.neo4jConnected))
+  const fileProcessed = ref(Boolean(persisted.fileProcessed))
+  const llmProvider = ref(persisted.llmProvider || 'openai-compatible')
+  const baseURL = ref(persisted.baseURL || 'http://localhost:1234/v1')
+  const modelName = ref(persisted.modelName || 'qwen3-14b')
+  const analysisMode = ref(persisted.analysisMode || 'single_detailed')
   const apiKey = ref('')
-  const currentFile = ref('')
-  const currentFileHash = ref('')
-  const analysisResult = ref(null)
+  const currentFile = ref(persisted.currentFile || '')
+  const currentFileHash = ref(persisted.currentFileHash || '')
+  const analysisResult = ref(persisted.analysisResult || null)
   const loading = ref(false)
   const error = ref('')
 
@@ -32,6 +75,37 @@ export const useAppStore = defineStore('app', () => {
   const work1Metrics = computed(() => analysisResult.value?.work1Metrics || {})
 
   const isReady = computed(() => apiConfigured.value && neo4jConnected.value && fileProcessed.value)
+
+  watch(
+    [
+      apiConfigured,
+      neo4jConnected,
+      fileProcessed,
+      llmProvider,
+      baseURL,
+      modelName,
+      analysisMode,
+      currentFile,
+      currentFileHash,
+      analysisResult,
+    ],
+    () => {
+      savePersistedState({
+        apiConfigured: apiConfigured.value,
+        neo4jConnected: neo4jConnected.value,
+        fileProcessed: fileProcessed.value,
+        llmProvider: llmProvider.value,
+        baseURL: baseURL.value,
+        modelName: modelName.value,
+        analysisMode: analysisMode.value,
+        currentFile: currentFile.value,
+        currentFileHash: currentFileHash.value,
+        analysisResult: withoutLargeText(analysisResult.value),
+        savedAt: new Date().toISOString(),
+      })
+    },
+    { deep: true }
+  )
 
   // Actions
   async function loadSettings() {
@@ -121,7 +195,10 @@ export const useAppStore = defineStore('app', () => {
 
   async function reanalyze() {
     fileProcessed.value = false
+    currentFile.value = ''
+    currentFileHash.value = ''
     analysisResult.value = null
+    clearPersistedState()
     await api.post('/reset', {})
   }
 
