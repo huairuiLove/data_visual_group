@@ -7,8 +7,9 @@ export const useAppStore = defineStore('app', () => {
   const apiConfigured = ref(false)
   const neo4jConnected = ref(false)
   const fileProcessed = ref(false)
-  const llmProvider = ref('deepseek')
-  const modelName = ref('deepseek-v4-flash')
+  const llmProvider = ref('openai-compatible')
+  const baseURL = ref('http://localhost:1234/v1')
+  const modelName = ref('gpt-4o-mini')
   const analysisMode = ref('single_detailed')
   const apiKey = ref('')
   const currentFile = ref('')
@@ -33,9 +34,9 @@ export const useAppStore = defineStore('app', () => {
   const isReady = computed(() => apiConfigured.value && neo4jConnected.value && fileProcessed.value)
 
   // Actions
-  async function testLLM(provider, key, model) {
+  async function testLLM(url, key, model) {
     try {
-      const res = await api.post('/test-llm', { provider, apiKey: key, model })
+      const res = await api.post('/test-llm', { baseURL: url, apiKey: key, model })
       return res
     } catch (e) {
       return { success: false, message: e.message }
@@ -61,10 +62,11 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  async function confirmSetup(provider, model, key) {
+  async function confirmSetup(url, model, key) {
     try {
-      const res = await api.post('/settings/llm', { provider, apiKey: key, model })
-      llmProvider.value = provider
+      const res = await api.post('/settings/llm', { baseURL: url, apiKey: key, model })
+      llmProvider.value = 'openai-compatible'
+      baseURL.value = res.baseURL || url
       modelName.value = res.model || model
       apiKey.value = key
       apiConfigured.value = true
@@ -171,15 +173,43 @@ export const useAppStore = defineStore('app', () => {
   }
 
   return {
-    apiConfigured, neo4jConnected, fileProcessed,
-    llmProvider, modelName, apiKey,
-    currentFile, currentFileHash, analysisResult,
-    loading, error,
+    apiConfigured,
+    neo4jConnected,
+    fileProcessed,
+    llmProvider,
+    baseURL,
+    modelName,
+    apiKey,
+    currentFile,
+    currentFileHash,
+    analysisResult,
+    loading,
+    error,
     analysisMode,
-    stats, meta, entityData, keywordData, personData,
-    timeline, spatialData, graphData, edges, insights, work1Metrics, isReady,
-    testLLM, testEmbeddings, connectNeo4j,
-    confirmSetup, confirmEmbeddings, uploadFile, reanalyze, runMultiAnalysis,
-    generateNotebook, finalizeResearchReport, listResearchReports, getResearchReport, askQuestion,
+    stats,
+    meta,
+    entityData,
+    keywordData,
+    personData,
+    timeline,
+    spatialData,
+    graphData,
+    edges,
+    insights,
+    work1Metrics,
+    isReady,
+    testLLM,
+    testEmbeddings,
+    connectNeo4j,
+    confirmSetup,
+    confirmEmbeddings,
+    uploadFile,
+    reanalyze,
+    runMultiAnalysis,
+    generateNotebook,
+    finalizeResearchReport,
+    listResearchReports,
+    getResearchReport,
+    askQuestion,
   }
 })

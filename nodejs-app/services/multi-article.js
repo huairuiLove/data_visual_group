@@ -32,7 +32,7 @@ async function saveArticleIndex(articles) {
   await fsp.writeFile(INDEX_FILE, JSON.stringify(articles, null, 2), 'utf8');
 }
 
-async function ingestArticle(filePath, fileName, provider = 'deepseek') {
+async function ingestArticle(filePath, fileName, provider = 'openai-compatible') {
   const typeCheck = validateFileType(fileName);
   if (!typeCheck.valid) {
     throw new Error(typeCheck.reason);
@@ -107,7 +107,7 @@ function filterArticles(articles, filters = {}) {
   return result;
 }
 
-async function runJointAnalysis(articleIds, provider = 'deepseek') {
+async function runJointAnalysis(articleIds, provider = 'openai-compatible') {
   const index = await loadArticleIndex();
   const selected = filterArticles(index, { ids: articleIds });
 

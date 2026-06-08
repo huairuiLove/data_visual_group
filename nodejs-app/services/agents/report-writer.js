@@ -2,25 +2,28 @@
  * ReportWriter Agent — 根据生图结果撰写研究报告
  */
 
-const { chat } = require('../llm');
-const { REPORT_WRITER_SYSTEM, buildReportUserPrompt } = require('../prompts/report');
-const { parseJsonFromResponse } = require('../extraction');
+const { chat, getModelName } = require('../llm')
+const { REPORT_WRITER_SYSTEM, buildReportUserPrompt } = require('../prompts/report')
+const { parseJsonFromResponse } = require('../extraction')
 
-async function writeResearchReport(payload, provider = 'deepseek') {
-  const response = await chat([
-    { role: 'system', content: REPORT_WRITER_SYSTEM },
-    { role: 'user', content: buildReportUserPrompt(payload) },
-  ], provider, {
-    model: 'deepseek-v4-pro',
-    temperature: 0.3,
-    maxTokens: 6000,
-    extra: {
-      thinking: { type: 'enabled' },
-      reasoning_effort: 'high',
-    },
-  });
+async function writeResearchReport(payload, provider = 'openai-compatible') {
+  const response = await chat(
+    [
+      { role: 'system', content: REPORT_WRITER_SYSTEM },
+      { role: 'user', content: buildReportUserPrompt(payload) },
+    ],
+    provider,
+    {
+      model: getModelName(provider, 'code'),
+      temperature: 0.3,
+      maxTokens: 6000,
+      extra: {
+        reasoning_effort: 'high',
+      },
+    }
+  )
 
-  const parsed = parseJsonFromResponse(response);
+  const parsed = parseJsonFromResponse(response)
   if (parsed?.markdown) {
     return {
       title: parsed.title || payload.title || '中东冲突研究报告',
@@ -28,15 +31,15 @@ async function writeResearchReport(payload, provider = 'deepseek') {
       highlights: parsed.highlights || [],
       riskLevel: parsed.risk_level || 'medium',
       source: 'llm',
-    };
+    }
   }
 
-  return buildFallbackReport(payload);
+  return buildFallbackReport(payload)
 }
 
 function buildFallbackReport(payload) {
-  const s = payload.analysisSummary || {};
-  const charts = payload.chartDescriptions || [];
+  const s = payload.analysisSummary || {}
+  const charts = payload.chartDescriptions || []
   const lines = [
     `# ${payload.title || '中东冲突态势研究报告'}`,
     '',
@@ -56,15 +59,15 @@ function buildFallbackReport(payload) {
     '',
     '## 结论',
     payload.conflictEvolution || '建议结合图谱与时间线持续跟踪态势演化。',
-  ];
+  ]
 
   return {
     title: payload.title || '中东冲突态势研究报告',
     markdown: lines.join('\n'),
-    highlights: charts.map(c => c.title).slice(0, 5),
+    highlights: charts.map((c) => c.title).slice(0, 5),
     riskLevel: 'medium',
     source: 'fallback',
-  };
+  }
 }
 
-module.exports = { writeResearchReport, buildFallbackReport };
+module.exports = { writeResearchReport, buildFallbackReport }
