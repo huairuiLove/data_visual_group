@@ -22,6 +22,7 @@ async function send() {
       role: 'assistant',
       content: res.answer || 'No response',
       sources: res.sources || [],
+      trace: res.trace || null,
     })
   } catch (e) {
     messages.value.push({ role: 'assistant', content: `Error: ${e.message}` })
@@ -53,10 +54,28 @@ function handleKeydown(e) {
         <div v-for="(msg, i) in messages" :key="i" class="qa-message" :class="'qa-' + msg.role">
           <div class="qa-role">{{ msg.role === 'user' ? 'You' : 'AI' }}</div>
           <div class="qa-content">{{ msg.content }}</div>
+          <details v-if="msg.trace" class="qa-trace">
+            <summary>检索计划</summary>
+            <div><strong>意图:</strong> {{ msg.trace.intent }}</div>
+            <div v-if="msg.trace.searchQueries?.length"><strong>查询词:</strong> {{ msg.trace.searchQueries.join('、') }}</div>
+            <div v-if="msg.trace.entities?.length"><strong>重点实体:</strong> {{ msg.trace.entities.join('、') }}</div>
+            <div v-if="msg.trace.reasoningSteps?.length">
+              <strong>步骤:</strong>
+              <ol>
+                <li v-for="(step, j) in msg.trace.reasoningSteps" :key="j">{{ step }}</li>
+              </ol>
+            </div>
+          </details>
           <details v-if="msg.sources?.length" class="qa-sources">
             <summary>证据来源 ({{ msg.sources.length }})</summary>
             <div v-for="(src, j) in msg.sources.slice(0, 5)" :key="j" class="qa-source">
-              {{ src.slice(0, 300) }}...
+              <template v-if="typeof src === 'string'">
+                {{ src.slice(0, 300) }}...
+              </template>
+              <template v-else>
+                <div class="source-meta">{{ src.type }} · {{ src.title || '未命名证据' }} · {{ Number(src.score || 0).toFixed(2) }}</div>
+                <div>{{ (src.content || '').slice(0, 420) }}...</div>
+              </template>
             </div>
           </details>
         </div>
@@ -85,9 +104,12 @@ function handleKeydown(e) {
 .qa-assistant { background: rgba(76,175,80,0.1); }
 .qa-role { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.2rem; }
 .qa-content { font-size: 0.9rem; white-space: pre-wrap; }
-.qa-sources { margin-top: 0.5rem; font-size: 0.78rem; }
-.qa-sources summary { cursor: pointer; color: var(--text-muted); }
+.qa-sources, .qa-trace { margin-top: 0.5rem; font-size: 0.78rem; }
+.qa-sources summary, .qa-trace summary { cursor: pointer; color: var(--text-muted); }
+.qa-trace { color: var(--text-muted); }
+.qa-trace ol { margin: 0.35rem 0 0 1.1rem; padding: 0; }
 .qa-source { padding: 0.3rem; color: var(--text-muted); font-size: 0.78rem; border-bottom: 1px solid var(--border); }
+.source-meta { color: var(--accent); margin-bottom: 0.2rem; }
 .qa-input-row { display: flex; gap: 0.5rem; }
 .qa-input-row textarea {
   flex: 1; padding: 0.5rem; background: #1e1e3a; border: 1px solid var(--border);

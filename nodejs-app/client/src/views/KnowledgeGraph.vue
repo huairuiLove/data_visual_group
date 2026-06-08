@@ -34,7 +34,7 @@ const filteredData = computed(() => {
   const sel = new Set(selectedTypes.value)
   const nodes = store.graphData.nodes.filter(n => sel.has(n.type))
   const ids = new Set(nodes.map(n => String(n.id)))
-  const links = store.graphData.links.filter(l => ids.has(String(l.source)) && ids.has(String(l.target)))
+  const links = store.graphData.links.filter(l => ids.has(endpointId(l.source)) && ids.has(endpointId(l.target)))
   return { nodes, links }
 })
 
@@ -43,6 +43,11 @@ const nodeTypes = computed(() => {
   filteredData.value.nodes.forEach(n => { types[n.type] = (types[n.type] || 0) + 1 })
   return types
 })
+
+function endpointId(value) {
+  if (value && typeof value === 'object') return String(value.id ?? value.name ?? value.text ?? '')
+  return String(value ?? '')
+}
 
 function renderStandardGraph() {
   const { nodes, links } = filteredData.value
@@ -57,7 +62,12 @@ function renderStandardGraph() {
   const positions = {}
   const adj = {}
   nodes.forEach(n => { adj[n.id] = []; positions[n.id] = { x: (Math.random()-0.5)*10, y: (Math.random()-0.5)*10 } })
-  links.forEach(l => { if (adj[l.source]) adj[l.source].push(l.target); if (adj[l.target]) adj[l.target].push(l.source) })
+  links.forEach(l => {
+    const source = endpointId(l.source)
+    const target = endpointId(l.target)
+    if (adj[source]) adj[source].push(target)
+    if (adj[target]) adj[target].push(source)
+  })
 
   for (let iter = 0; iter < 40; iter++) {
     const forces = {}
@@ -80,7 +90,7 @@ function renderStandardGraph() {
   // Edges
   const ex = [], ey = []
   links.forEach(l => {
-    const s = positions[l.source], t = positions[l.target]
+    const s = positions[endpointId(l.source)], t = positions[endpointId(l.target)]
     if (s && t) { ex.push(s.x, t.x, null); ey.push(s.y, t.y, null) }
   })
 
@@ -124,10 +134,12 @@ function render3dGraph() {
   const degrees = {}
   nodes.forEach(n => { adj[n.id] = []; degrees[n.id] = 0 })
   links.forEach(l => {
-    if (adj[l.source]) adj[l.source].push(l.target)
-    if (adj[l.target]) adj[l.target].push(l.source)
-    degrees[l.source] = (degrees[l.source] || 0) + 1
-    degrees[l.target] = (degrees[l.target] || 0) + 1
+    const source = endpointId(l.source)
+    const target = endpointId(l.target)
+    if (adj[source]) adj[source].push(target)
+    if (adj[target]) adj[target].push(source)
+    degrees[source] = (degrees[source] || 0) + 1
+    degrees[target] = (degrees[target] || 0) + 1
   })
 
   // Use semantic landscape for X/Y if available, with degree as Z
@@ -151,7 +163,7 @@ function render3dGraph() {
 
   const ex = [], ey = [], ez = []
   links.forEach(l => {
-    const s = positions[l.source], t = positions[l.target]
+    const s = positions[endpointId(l.source)], t = positions[endpointId(l.target)]
     if (s && t) { ex.push(s.x, t.x, null); ey.push(s.y, t.y, null); ez.push(s.z, t.z, null) }
   })
 

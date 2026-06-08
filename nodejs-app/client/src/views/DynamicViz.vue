@@ -16,11 +16,35 @@ const chart3dDynamic = ref(null)
 const animFrame = ref(0)
 const isPlaying = ref(true)
 let animTimer = null
+let timelineFrameCount = 1
 
 const { render: renderTimeline } = usePlotly(timelineChart, { layout: { height: 400 } })
 const { render: render3d } = usePlotly(chart3dDynamic, { layout: { height: 650, margin: { l: 0, r: 0, t: 40, b: 0 } } })
 
 const metrics = computed(() => store.analysisResult?.work1Metrics || {})
+
+function endpointId(value) {
+  if (value && typeof value === 'object') return String(value.id ?? value.name ?? value.text ?? '')
+  return String(value ?? '')
+}
+
+function timelineTriples() {
+  const triples = metrics.value.relationTriples || []
+  if (triples.length) return triples
+
+  const grouped = new Map()
+  for (const link of store.graphData.links || []) {
+    const source = endpointId(link.source)
+    const target = endpointId(link.target)
+    const type = link.type || link.relation || '关系'
+    if (!source || !target) continue
+    const key = `${source}|||${type}|||${target}`
+    const item = grouped.get(key) || { source, target, type, count: 0 }
+    item.count += link.count || 1
+    grouped.set(key, item)
+  }
+  return [...grouped.values()].sort((a, b) => b.count - a.count)
+}
 
 function renderNetwork2D() {
   stopDynamic()
@@ -31,31 +55,30 @@ function renderNetwork2D() {
 }
 
 function renderTimelineAnim() {
-  const triples = metrics.value.relationTriples || []
+  const triples = timelineTriples()
   if (!triples.length) return
 
   const types = [...new Set(triples.map(t => t.type))]
-  const frames = types.map((type, fi) => {
-    const filtered = triples.filter(t => types.indexOf(t.type) <= fi)
-    return {
-      name: `frame_${fi}`,
-      data: [{
-        type: 'bar',
-        x: filtered.map(t => `${t.source.slice(0, 12)}→${t.target.slice(0, 12)}`),
-        y: filtered.map(t => t.count),
-        marker: { color: filtered.map(t => generateColors(types.length)[types.indexOf(t.type)]) },
-      }],
-    }
-  })
+  const colors = generateColors(types.length)
+  timelineFrameCount = Math.max(types.length, 1)
+  const frameIndex = animFrame.value % timelineFrameCount
+  const activeTypes = new Set(types.slice(0, frameIndex + 1))
+  const filtered = triples
+    .filter(t => activeTypes.has(t.type))
+    .sort((a, b) => (b.count || 1) - (a.count || 1))
+    .slice(0, 16)
 
   renderTimeline([{
     type: 'bar',
-    x: triples.slice(0, 10).map(t => `${t.source.slice(0, 10)}→${t.target.slice(0, 10)}`),
-    y: triples.slice(0, 10).map(t => t.count),
-    marker: { color: '#4a9eff' },
+    x: filtered.map(t => `${String(t.source).slice(0, 10)}→${String(t.target).slice(0, 10)}`),
+    y: filtered.map(t => t.count || 1),
+    marker: { color: filtered.map(t => colors[types.indexOf(t.type)] || '#4a9eff') },
+    text: filtered.map(t => t.type),
+    hovertemplate: '%{x}<br>关系: %{text}<br>次数: %{y}<extra></extra>',
   }], {
-    title: `关系三元组流 (帧 ${animFrame.value + 1}/${Math.max(frames.length, 1)})`,
+    title: `关系三元组时序动画 (帧 ${frameIndex + 1}/${timelineFrameCount}: ${types[frameIndex] || '关系'})`,
     xaxis: { tickangle: -45 },
+    yaxis: { rangemode: 'tozero' },
     height: 400,
   })
 }
@@ -76,7 +99,7 @@ function render3DDynamic() {
   // Compute node degrees (importance) from links
   const degrees = {}
   links.forEach(l => {
-    const s = String(l.source || ''), t = String(l.target || '')
+    const s = endpointId(l.source), t = endpointId(l.target)
     degrees[s] = (degrees[s] || 0) + 1; degrees[t] = (degrees[t] || 0) + 1
   })
 
@@ -103,7 +126,7 @@ function render3DDynamic() {
 
   const ex = [], ey = [], ez = []
   links.forEach(l => {
-    const s = positions[String(l.source)], t = positions[String(l.target)]
+    const s = positions[endpointId(l.source)], t = positions[endpointId(l.target)]
     if (s && t) { ex.push(s.x, t.x, null); ey.push(s.y, t.y, null); ez.push(s.z, t.z, null) }
   })
 
@@ -156,7 +179,7 @@ function startAnimation() {
   stopAnimation()
   if (!isPlaying.value) return
   animTimer = setInterval(() => {
-    animFrame.value = (animFrame.value + 1) % 60
+    animFrame.value = (animFrame.value + 1) % (mode.value === 'timeline2d' ? timelineFrameCount : 360)
     if (mode.value === 'timeline2d') renderTimelineAnim()
     else if (mode.value === '3d') render3DDynamic()
   }, 200)
@@ -174,9 +197,12 @@ function togglePlay() {
 
 function updateViz() {
   stopAnimation()
-  if (mode.value === 'network2d') renderNetwork2D()
-  else if (mode.value === 'timeline2d') { renderTimelineAnim(); startAnimation() }
-  else if (mode.value === '3d') { render3DDynamic(); startAnimation() }
+  animFrame.value = 0
+  nextTick(() => {
+    if (mode.value === 'network2d') renderNetwork2D()
+    else if (mode.value === 'timeline2d') { renderTimelineAnim(); startAnimation() }
+    else if (mode.value === '3d') { render3DDynamic(); startAnimation() }
+  })
 }
 
 watch(() => store.graphData, updateViz, { deep: true })

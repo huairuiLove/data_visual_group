@@ -28,13 +28,15 @@ export function usePlotly(elRef, options = {}) {
       ...layout,
     }
 
-    loadPlotly().then((Plotly) => {
+    return loadPlotly().then((Plotly) => {
       if (!elRef.value) return
-      Plotly.newPlot(el, data, defaultLayout, {
+      return Plotly.react(el, data, defaultLayout, {
         responsive: true,
         displayModeBar: false,
+      }).then(() => {
+        plotReady.value = true
+        return Plotly.Plots.resize(el)
       })
-      plotReady.value = true
     })
   }
 

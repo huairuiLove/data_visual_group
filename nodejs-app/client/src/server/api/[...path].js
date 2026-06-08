@@ -560,67 +560,285 @@ async function routeRequest(event, pathname, method) {
   throw apiError(404, `未找到 API: ${method} ${pathname}`, 'NOT_FOUND')
 }
 
-async function answerQuestion(question, provider) {
-  const terms = question.split(/[\s，。！？、]+/).filter((t) => t.length >= 2)
-  const results = []
+function parseJsonObject(text) {
+  try {
+    return JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || text)
+  } catch {
+    return null
+  }
+}
 
-  for (const term of terms) {
-    const termResults = await runQuery(
-      `MATCH (n)
-       WHERE n.text IS NOT NULL AND toLower(n.text) CONTAINS toLower($term)
-       RETURN n.text AS content, 1.0 AS score
-       LIMIT 3`,
-      { term }
+function compactText(text, max = 600) {
+  return String(text || '').replace(/\s+/g, ' ').trim().slice(0, max)
+}
+
+function extractTerms(text) {
+  const raw = String(text || '')
+    .split(/[\s,，。！？；;:：、"'“”‘’()[\]{}<>《》|/\\]+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2)
+  const cjk = [...String(text || '').matchAll(/[\u4e00-\u9fa5A-Za-z0-9_-]{2,}/g)].map((m) => m[0])
+  return [...new Set([...raw, ...cjk])].slice(0, 20)
+}
+
+function scoreTextByTerms(text, terms) {
+  const lower = String(text || '').toLowerCase()
+  return terms.reduce((score, term) => score + (lower.includes(String(term).toLowerCase()) ? 1 : 0), 0)
+}
+
+function sourceKey(source) {
+  return `${source.type || ''}:${source.title || ''}:${source.content || ''}`.slice(0, 500)
+}
+
+async function planGraphRagQuestion(question, analysisResult, provider) {
+  const knownEntities = (analysisResult.entities || analysisResult.entityData?.allNodes || [])
+    .map((e) => e.name || e.id)
+    .filter(Boolean)
+    .slice(0, 80)
+  const knownRelations = [...new Set((analysisResult.relations || []).map((r) => r.type).filter(Boolean))].slice(0, 40)
+  const fallbackTerms = extractTerms(question)
+
+  try {
+    const response = await chat(
+      [
+        {
+          role: 'system',
+          content: `你是 GraphRAG 查询规划 Agent。请把用户问题拆成可检索计划，只输出 JSON。
+字段:
+{
+  "intent": "用户真正想问什么",
+  "search_queries": ["3-8 个中文/英文检索词或短语"],
+  "entities": ["应重点查的实体名，必须尽量来自已知实体"],
+  "relation_types": ["应重点查的关系类型"],
+  "need_reports": true,
+  "reasoning_steps": ["你会如何查证"]
+}
+不要回答问题，只规划检索。`,
+        },
+        {
+          role: 'user',
+          content: `问题: ${question}
+
+已知实体样例: ${knownEntities.join(', ')}
+已知关系类型: ${knownRelations.join(', ')}`,
+        },
+      ],
+      provider || 'openai-compatible',
+      { temperature: 0.1, maxTokens: 2000 }
     )
-    results.push(...termResults)
+    const plan = parseJsonObject(response)
+    if (plan) {
+      return {
+        intent: plan.intent || question,
+        searchQueries: [...new Set([...(plan.search_queries || []), ...fallbackTerms])].slice(0, 12),
+        entities: [...new Set(plan.entities || [])].slice(0, 12),
+        relationTypes: [...new Set(plan.relation_types || [])].slice(0, 8),
+        needReports: plan.need_reports !== false,
+        reasoningSteps: plan.reasoning_steps || [],
+      }
+    }
+  } catch (error) {
+    console.warn('QA planning skipped:', error.message)
   }
 
+  return {
+    intent: question,
+    searchQueries: fallbackTerms,
+    entities: [],
+    relationTypes: [],
+    needReports: true,
+    reasoningSteps: ['按问题关键词检索图谱节点、关系、文本块和历史报告'],
+  }
+}
+
+function retrieveFromAnalysisResult(question, plan, analysisResult) {
+  const terms = [...new Set([question, ...plan.searchQueries, ...plan.entities].filter(Boolean))]
+  const sources = []
+
+  const entities = analysisResult.entities || analysisResult.entityData?.allNodes || []
+  for (const e of entities) {
+    const content = [e.name || e.id, e.type, e.summary, e.text].filter(Boolean).join(' — ')
+    const score = scoreTextByTerms(content, terms)
+    if (score > 0 || plan.entities.some((name) => String(e.name || e.id || '').includes(name))) {
+      sources.push({ type: 'entity', title: e.name || e.id, score: score + 2, content: compactText(content) })
+    }
+  }
+
+  const relations = analysisResult.relations || []
+  for (const r of relations) {
+    const content = `${r.source} -[${r.type}]-> ${r.target}. ${r.summary || ''}`
+    const score = scoreTextByTerms(content, terms) + (plan.relationTypes.includes(r.type) ? 2 : 0)
+    if (score > 0) sources.push({ type: 'relation', title: r.type, score, content: compactText(content) })
+  }
+
+  const docs = appState.lcDocsTexts || analysisResult.docs || []
+  const textChunks = docs.length ? docs : chunkText(analysisResult.fullText || '').map((text) => text)
+  textChunks.forEach((text, index) => {
+    const score = scoreTextByTerms(text, terms)
+    if (score > 0) sources.push({ type: 'chunk', title: `文本块 ${index + 1}`, score, content: compactText(text, 900) })
+  })
+
+  const derived = [
+    ...(analysisResult.insights || []).map((content, i) => ({ type: 'insight', title: `自动洞察 ${i + 1}`, content })),
+    analysisResult.themeSummary ? { type: 'analysis', title: '主题摘要', content: analysisResult.themeSummary } : null,
+    analysisResult.conflictEvolution ? { type: 'analysis', title: '冲突演化', content: analysisResult.conflictEvolution } : null,
+    analysisResult.ruleMining ? { type: 'analysis', title: '规则挖掘', content: JSON.stringify(analysisResult.ruleMining).slice(0, 1200) } : null,
+    analysisResult.kdd ? { type: 'analysis', title: 'KDD 聚类/主题', content: JSON.stringify(analysisResult.kdd).slice(0, 1200) } : null,
+  ].filter(Boolean)
+
+  derived.forEach((item) => {
+    const score = scoreTextByTerms(item.content, terms)
+    if (score > 0 || item.type === 'analysis') sources.push({ ...item, score: score + 0.5, content: compactText(item.content, 1000) })
+  })
+
+  return sources
+}
+
+async function retrieveFromNeo4j(plan) {
+  const sources = []
+  const terms = [...new Set([...plan.searchQueries, ...plan.entities].filter(Boolean))].slice(0, 12)
+
+  for (const term of terms) {
+    const nodeRows = await runQuery(
+      `MATCH (n)
+       WHERE (n.text IS NOT NULL AND toLower(n.text) CONTAINS toLower($term))
+          OR (n.id IS NOT NULL AND toLower(toString(n.id)) CONTAINS toLower($term))
+          OR (n.summary IS NOT NULL AND toLower(n.summary) CONTAINS toLower($term))
+       OPTIONAL MATCH (n)-[r]-(m)
+       RETURN coalesce(n.id, n.name, n.text) AS title,
+              labels(n) AS labels,
+              n.text AS text,
+              n.summary AS summary,
+              collect(DISTINCT coalesce(n.id, n.name, n.text) + ' -[' + type(r) + ']- ' + coalesce(m.id, m.name, m.text))[0..8] AS neighborhood
+       LIMIT 5`,
+      { term }
+    )
+    for (const row of nodeRows) {
+      sources.push({
+        type: 'neo4j-node',
+        title: row.title || term,
+        score: 2,
+        content: compactText(`${(row.labels || []).join('/')} ${row.text || ''} ${row.summary || ''} ${(row.neighborhood || []).join('; ')}`, 1000),
+      })
+    }
+  }
+
+  if (plan.needReports) {
+    const reportRows = await runQuery(
+      `MATCH (r:ResearchReport)
+       WHERE any(term IN $terms WHERE toLower(r.markdown) CONTAINS toLower(term)
+          OR toLower(r.title) CONTAINS toLower(term))
+       RETURN r.title AS title, r.createdAt AS createdAt, r.markdown AS markdown, r.highlights AS highlights
+       ORDER BY r.createdAt DESC
+       LIMIT 3`,
+      { terms }
+    ).catch(() => [])
+    for (const row of reportRows) {
+      sources.push({
+        type: 'research-report',
+        title: row.title,
+        score: 1.5,
+        content: compactText([row.createdAt, ...(row.highlights || []), row.markdown].filter(Boolean).join('\n'), 1200),
+      })
+    }
+  }
+
+  return sources
+}
+
+async function retrieveVectorEvidence(question) {
   try {
     const embeddings = new LocalEmbeddings()
     const questionEmbedding = await embeddings.embedQuery(question)
     const vectorResults = await runQuery(
-      `CALL db.index.vector.queryNodes('vector_index', 5, $embedding)
+      `CALL db.index.vector.queryNodes('vector_index', 8, $embedding)
        YIELD node, score
-       WHERE node.text IS NOT NULL AND score > 0.3
-       RETURN node.text AS content, score
+       WHERE node.text IS NOT NULL AND score > 0.25
+       RETURN coalesce(node.id, node.name, node.text) AS title, node.text AS content, score
        ORDER BY score DESC`,
       { embedding: questionEmbedding }
     )
-    results.push(...vectorResults)
+    return vectorResults.map((r) => ({
+      type: 'vector',
+      title: r.title,
+      score: Number(r.score || 0),
+      content: compactText(r.content, 900),
+    }))
   } catch (error) {
     console.warn('Vector QA lookup skipped:', error.message)
+    return []
+  }
+}
+
+async function answerQuestion(question, provider) {
+  const analysisResult = appState.analysisResult
+  if (!analysisResult) throw apiError(400, '请先完成单文或多文分析', 'NO_ANALYSIS')
+
+  const plan = await planGraphRagQuestion(question, analysisResult, provider)
+  const sources = [
+    ...retrieveFromAnalysisResult(question, plan, analysisResult),
+    ...(await retrieveFromNeo4j(plan).catch((error) => {
+      console.warn('Neo4j QA lookup skipped:', error.message)
+      return []
+    })),
+    ...(await retrieveVectorEvidence(question)),
+  ]
+
+  const deduped = []
+  const seen = new Set()
+  for (const source of sources.sort((a, b) => (b.score || 0) - (a.score || 0))) {
+    const key = sourceKey(source)
+    if (!source.content || seen.has(key)) continue
+    seen.add(key)
+    deduped.push(source)
+    if (deduped.length >= 18) break
   }
 
-  const seen = new Set()
-  const context = []
-  for (const r of results) {
-    if (r.content && !seen.has(r.content)) {
-      seen.add(r.content)
-      const scoreText = r.score ? `(相关度: ${Number(r.score).toFixed(2)})` : ''
-      context.push(`- ${r.content} ${scoreText}`)
+  if (!deduped.length) {
+    return {
+      answer: '未找到足够证据。建议换用更具体的实体名、事件名、国家/组织名称，或先重新运行文档分析。',
+      sources: [],
+      trace: plan,
     }
   }
 
-  if (!context.length) return { answer: '未找到相关信息。', sources: [] }
+  const evidence = deduped
+    .map((s, i) => `[${i + 1}] 类型=${s.type} 标题=${s.title || '-'} 相关度=${Number(s.score || 0).toFixed(2)}\n${s.content}`)
+    .join('\n\n')
 
   const llmResponse = await chat(
     [
       {
+        role: 'system',
+        content: `你是 GraphRAG + Agentic 分析问答助手。你必须:
+1. 先理解问题意图，再综合图谱节点、关系、文本块、自动洞察和历史报告。
+2. 只基于证据回答；证据不足时明确说不足。
+3. 回答要给出关键实体、关系链、依据编号，例如 [1][3]。
+4. 如果问题有歧义，说明你采用的解释。`,
+      },
+      {
         role: 'user',
-        content: `基于以下检索到的信息回答问题：
+        content: `问题:
+${question}
 
-问题：${question}
+检索计划:
+${JSON.stringify(plan, null, 2)}
 
-检索到的信息：
-${context.join('\n')}
+证据:
+${evidence}
 
-请直接基于检索到的信息回答，如果信息不充分请说明。`,
+请用中文回答，先给结论，再列依据和不确定性。`,
       },
     ],
-    provider || 'openai-compatible'
+    provider || 'openai-compatible',
+    { temperature: 0.2, maxTokens: 6000 }
   )
 
-  return { answer: llmResponse, sources: context }
+  return {
+    answer: llmResponse,
+    sources: deduped,
+    trace: plan,
+  }
 }
 
 async function finalizeResearchReport(payload) {
