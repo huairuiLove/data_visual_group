@@ -26,6 +26,7 @@ async function generateNotebook(analysisResult, options = {}) {
           role: 'user',
           content: buildNotebookUserPrompt(analysisData, {
             focusAreas: options.focusAreas,
+            customRequest: options.customRequest,
             articleCount: (analysisData.articles || []).length || 1,
           }),
         },

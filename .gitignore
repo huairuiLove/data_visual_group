@@ -39,3 +39,6 @@ nodejs-app/data/cache/
 
 # Cache
 cache/
+
+api_key
+nodejs-app/data/*

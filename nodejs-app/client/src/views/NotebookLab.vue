@@ -24,11 +24,26 @@ const validation = ref([])
 const savedReport = ref(null)
 const chartPreviews = ref([])
 const focusAreas = ref(['实体分布', '关系网络', '共现热力图', '规则挖掘'])
+const customRequest = ref('')
 
 const CHART_TITLES = [
   '实体类型分布', '关系类型分布', 'Top 实体排名', '实体共现热力图',
   'Actor-Action 规则流', '事件分类分布', '关系三元组流', '语义景观',
+  '聚类分析', '主题词云', '时间演化', '异常关系',
 ]
+const FOCUS_OPTIONS = [
+  '实体分布', '关系网络', '共现热力图', '事件分类', '规则挖掘', '三元组流',
+  '时间演化', '语义聚类', '主题建模', '词云', '地理/区域对比', '异常值检测',
+]
+const REQUEST_EXAMPLES = [
+  '生成 8 张图，重点比较各组织/国家在不同事件类别中的角色，并加入聚类散点图。',
+  '我想看时间线上的冲突升级趋势、关键词词云、实体共现社区网络和关系强度排名。',
+  '请用 seaborn/sklearn/scipy 做更丰富的统计图，突出异常关系和核心行动者。',
+]
+
+function useExample(text) {
+  customRequest.value = text
+}
 
 async function initPyodide() {
   progress.value = '加载 Pyodide 运行环境...'
@@ -97,7 +112,10 @@ async function runFullPipeline() {
 
   try {
     progress.value = '① 多智能体生成代码（浏览器临时内存，不存储）...'
-    const res = await store.generateNotebook(focusAreas.value)
+    const res = await store.generateNotebook({
+      focusAreas: focusAreas.value,
+      customRequest: customRequest.value,
+    })
     ephemeralNotebook.value = res.notebook
     analysisData.value = res.analysisData
     source.value = res.source
@@ -153,9 +171,24 @@ const hasSavedReport = computed(() => !!savedReport.value?.id)
       <div class="panel">
         <h3>一键生成研究报告</h3>
         <div class="focus-tags">
-          <label v-for="area in ['实体分布', '关系网络', '共现热力图', '事件分类', '规则挖掘', '三元组流']" :key="area" class="tag-check">
+          <label v-for="area in FOCUS_OPTIONS" :key="area" class="tag-check">
             <input type="checkbox" :value="area" v-model="focusAreas"> {{ area }}
           </label>
+        </div>
+        <div class="custom-request">
+          <label for="notebook-custom-request">自定义希望看到的图</label>
+          <textarea
+            id="notebook-custom-request"
+            v-model="customRequest"
+            rows="4"
+            maxlength="800"
+            placeholder="例如：希望看实体社区发现、关键词词云、时间演化、关系强度异常值、国家/组织对比，图表不少于 8 张。"
+          />
+          <div class="example-row">
+            <button v-for="ex in REQUEST_EXAMPLES" :key="ex" type="button" class="chip-btn" @click="useExample(ex)">
+              {{ ex.slice(0, 18) }}...
+            </button>
+          </div>
         </div>
         <div class="actions">
           <button class="btn btn-primary" :disabled="generating || running || finalizing" @click="runFullPipeline">
@@ -216,6 +249,32 @@ const hasSavedReport = computed(() => !!savedReport.value?.id)
 .success-panel { border-color: #4caf50; background: rgba(76,175,80,0.08); }
 .focus-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
 .tag-check { font-size: 0.82rem; color: var(--text-muted); cursor: pointer; }
+.custom-request { display: grid; gap: 0.4rem; margin-bottom: 0.75rem; }
+.custom-request label { font-size: 0.82rem; color: var(--text-muted); }
+.custom-request textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 88px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-sidebar);
+  color: var(--text-main);
+  padding: 0.65rem;
+  font: inherit;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+.example-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.chip-btn {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 999px;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+.chip-btn:hover { color: var(--accent); border-color: var(--accent); }
 .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .progress-text { margin-top: 0.5rem; font-size: 0.82rem; color: var(--accent); }
 .chart-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem; }

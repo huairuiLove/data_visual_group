@@ -55,9 +55,9 @@ function validatePythonCells(notebook) {
 
   for (const cell of codeCells) {
     const code = cell.source.join('')
-    if (/import\s+seaborn|from\s+seaborn/.test(code)) issues.push('使用了 seaborn')
-    if (/import\s+sklearn|from\s+sklearn/.test(code)) issues.push('使用了 sklearn')
     if (/\bopen\s*\(/.test(code)) issues.push('使用了 open() 读文件')
+    if (/import\s+requests|from\s+requests/.test(code)) issues.push('使用了 requests 网络请求')
+    if (/from\s+pathlib\s+import|import\s+pathlib/.test(code)) issues.push('使用了 pathlib 读文件')
     if (!/matplotlib\.use\s*\(\s*['"]Agg['"]\s*\)/.test(code) && /import matplotlib/.test(code)) {
       issues.push('缺少 matplotlib.use Agg')
     }
@@ -77,8 +77,8 @@ function autoFixNotebook(notebook) {
     if (/import matplotlib/.test(code) && !/matplotlib\.use/.test(code)) {
       code = "import matplotlib\nmatplotlib.use('Agg')\n" + code.replace(/import matplotlib\n?/, '')
     }
-    code = code.replace(/import seaborn[^\n]*\n/g, '')
-    code = code.replace(/sns\.\w+/g, '# seaborn removed')
+    code = code.replace(/^\s*import\s+requests[^\n]*\n/gm, '')
+    code = code.replace(/^\s*from\s+requests\s+import[^\n]*\n/gm, '')
 
     cell.source = code.split('\n').map((line, i, arr) => (i < arr.length - 1 ? `${line}\n` : line))
   }
@@ -154,7 +154,7 @@ async function generateNotebookMultiAgent(analysisResult, options = {}) {
     const plannerStep = await runAgent(
       'VizPlanner',
       PLANNER_SYSTEM,
-      buildPlannerUserPrompt(profile, options.focusAreas),
+      buildPlannerUserPrompt(profile, options.focusAreas, options.customRequest),
       provider,
       flashModel,
       { reasoning_effort: 'medium', maxTokens: 3000 }

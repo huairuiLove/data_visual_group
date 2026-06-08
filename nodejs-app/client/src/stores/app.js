@@ -247,9 +247,11 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  async function generateNotebook(focusAreas = []) {
+  async function generateNotebook(options = {}) {
+    const payload = Array.isArray(options) ? { focusAreas: options } : options
     return api.post('/generate-notebook', {
-      focusAreas,
+      focusAreas: payload.focusAreas || [],
+      customRequest: payload.customRequest || '',
       llmProvider: llmProvider.value,
     })
   }

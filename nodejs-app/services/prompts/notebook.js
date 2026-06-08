@@ -11,14 +11,15 @@ const NOTEBOOK_SYSTEM_PROMPT = `你是中东冲突数据可视化专家兼 Pytho
 2. **关系类型分布** (llm_02_relation_types): 柱状图
 3. **Top 实体排名** (llm_03_top_entities): 按出现频次
 4. **实体共现网络** (llm_04_entity_network): networkx 力导向布局
-5. **实体共现热力图** (llm_05_entity_cooccurrence): seaborn heatmap
+5. **实体共现热力图** (llm_05_entity_cooccurrence): matplotlib imshow 或 seaborn heatmap
 6. **关系三元组流** (llm_07_relation_triples): source→relation→target
 7. **时间关系演化** (llm_deep_04): 按时间聚合关系类型（如有时间数据）
 8. **事件分类饼图**: 空袭/停火/封锁/外交/军事/人道/经济
 
 ## 代码约束（Pyodide 浏览器端）
 
-- 仅使用: json, math, collections, pandas, numpy, matplotlib, seaborn, networkx
+- 优先使用: json, math, collections, pandas, numpy, matplotlib, networkx, scipy, sklearn, seaborn, statsmodels, sympy, wordcloud, PIL
+- 其他 PyPI 包仅在 Pyodide/micropip 可安装且不依赖本地系统二进制、文件系统或网络请求时使用
 - matplotlib 使用 Agg 后端: matplotlib.use('Agg')
 - 每个图表 plt.savefig 到 BytesIO 后 display 或 print base64（Pyodide 用 plt.show()）
 - 数据从变量 \`analysis_data\` 读取（已预注入）
@@ -56,7 +57,7 @@ const NOTEBOOK_SYSTEM_PROMPT = `你是中东冲突数据可视化专家兼 Pytho
 }`;
 
 function buildNotebookUserPrompt(analysisData, options = {}) {
-  const { focusAreas = [], articleCount = 1 } = options;
+  const { focusAreas = [], articleCount = 1, customRequest = '' } = options;
   const dataJson = JSON.stringify(analysisData, null, 2);
   const truncated = dataJson.length > 12000
     ? dataJson.slice(0, 8000) + '\n... [数据截断] ...\n' + dataJson.slice(-4000)
@@ -67,12 +68,14 @@ function buildNotebookUserPrompt(analysisData, options = {}) {
 分析模式: ${analysisData.mode || 'single'}
 文章数量: ${articleCount}
 重点关注: ${focusAreas.length ? focusAreas.join(', ') : '全面分析（实体分布、关系网络、共现热力图、事件分类）'}
+用户自定义图表需求:
+${customRequest || '无；请根据数据自动规划丰富图表'}
 
 数据 (analysis_data):
 ${truncated}
 
 要求:
-1. 至少 6 个可视化图表（覆盖 work1 核心图）
+1. 至少 6 个可视化图表，优先满足用户自定义需求；数据足够时可生成 8-10 个图
 2. 开头 markdown cell 写分析摘要
 3. 代码适配 Pyodide 浏览器执行环境
 4. 如有 themeSummary/conflictEvolution，在结论 cell 中引用`;

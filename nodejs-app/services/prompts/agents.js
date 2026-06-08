@@ -21,7 +21,7 @@ const PROFILER_SYSTEM = `你是数据分析专家 Agent（DataProfiler）。
 
 const PLANNER_SYSTEM = `你是可视化规划专家 Agent（VizPlanner）。
 任务：根据 DataProfiler 的数据画像，规划 Jupyter Notebook 可视化方案。
-必须对齐 work1 图表目录，但只规划数据中实际可画的图。
+优先满足用户自定义图表需求，同时对齐 work1 图表目录；只规划数据中实际可画的图，不编造数据。
 
 work1 图表目录:
 - llm_01 实体类型分布 (barh)
@@ -34,6 +34,15 @@ work1 图表目录:
 - rule_02 冲突链分布 (pie)
 - kdd_01 话题词云替代 (barh top terms)
 - event_01 事件分类 (pie)
+
+可扩展图表与分析:
+- timeline_01 时间演化折线/堆叠面积
+- cluster_01 语义/实体聚类散点图
+- community_01 网络社区/中心性排名
+- wordcloud_01 关键词词云或词频替代条形图
+- anomaly_01 关系强度/实体频次异常值
+- compare_01 国家、组织、来源、事件类别对比
+- stats_01 相关性、分布、箱线图、小提琴图、回归趋势
 
 输出纯 JSON:
 {
@@ -51,14 +60,15 @@ const CODER_SYSTEM = `你是 Python 可视化工程师 Agent（CodeWriter）。
 任务：根据 VizPlanner 的 cells_plan，编写可在 Pyodide 浏览器端执行的 Jupyter Notebook。
 
 ## 硬性约束
-- 仅 import: json, math, collections, matplotlib, numpy, pandas, networkx
+- 可优先使用: json, math, collections, matplotlib, numpy, pandas, networkx, scipy, sklearn, seaborn, statsmodels, sympy, wordcloud, PIL
+- 其他 PyPI 包仅在 Pyodide/micropip 可安装且不依赖本地系统二进制、文件系统或网络请求时使用
 - 第一行: import matplotlib; matplotlib.use('Agg')
 - 数据从 analysis_data 变量读取（已预注入，不要用 open/read文件）
 - 每个 code cell 必须完整可独立运行
 - 图表用 plt.show() 展示
 - 中文注释
 - networkx 布局用 spring_layout，节点数>20时只取 top 20
-- 共现热力图用 matplotlib imshow + 自定义 labels，不要用 seaborn（Pyodide 兼容差）
+- 共现热力图可以用 matplotlib imshow 或 seaborn heatmap；若 seaborn 不可用，回退到 imshow
 
 输出纯 JSON nbformat 4.5:
 {"nbformat":4,"nbformat_minor":5,"metadata":{...},"cells":[...]}`
@@ -67,7 +77,7 @@ const REVIEWER_SYSTEM = `你是代码审查专家 Agent（CodeReviewer）。
 任务：审查 CodeWriter 生成的 Notebook，确保能在 Pyodide 浏览器端正确执行。
 
 检查清单:
-1. 禁止 seaborn, sklearn, scipy, requests, open(), pathlib 读文件
+1. 禁止 requests, open(), pathlib 读文件；允许 scipy, sklearn, seaborn 等 Pyodide 可安装分析包
 2. 必须有 matplotlib.use('Agg')
 3. 所有数据访问用 analysis_data.get(...)
 4. 空数据要有 if 判断跳过，不能 crash
@@ -97,12 +107,12 @@ function buildProfilerUserPrompt(analysisData) {
   return `用户上传文章的分析数据（非爬虫，仅上传内容）:\n${JSON.stringify(summary, null, 2).slice(0, 8000)}`
 }
 
-function buildPlannerUserPrompt(profile, focusAreas) {
-  return `数据画像:\n${JSON.stringify(profile, null, 2)}\n\n用户关注: ${(focusAreas || []).join(', ') || '全面分析'}\n请规划 6-8 个可视化 cell。`
+function buildPlannerUserPrompt(profile, focusAreas, customRequest = '') {
+  return `数据画像:\n${JSON.stringify(profile, null, 2)}\n\n用户关注: ${(focusAreas || []).join(', ') || '全面分析'}\n\n用户自定义图表需求:\n${customRequest || '无；请根据数据自动规划丰富图表'}\n\n请规划 6-10 个可视化 code cell。若用户要求的图无法由现有 analysis_data 支撑，请规划最接近的可实现替代图，并在 purpose 中说明。`
 }
 
 function buildCoderUserPrompt(plan, _analysisDataSchema) {
-  return `可视化规划:\n${JSON.stringify(plan, null, 2)}\n\nanalysis_data 可用字段: entities, relations, eventCategories, cooccurrence, relationTriples, ruleMining, kdd, articles, themeSummary, conflictEvolution, semanticLandscape\n\n请生成完整 Notebook JSON。`
+  return `可视化规划:\n${JSON.stringify(plan, null, 2)}\n\nanalysis_data 可用字段: entities, relations, eventCategories, cooccurrence, relationTriples, ruleMining, kdd, articles, themeSummary, conflictEvolution, semanticLandscape, keywordData, stats, timeline, spatialData\n\n请生成完整 Notebook JSON。尽量让每张图标题、坐标轴、图例和中文注释清楚；对用户自定义需求要优先实现。`
 }
 
 function buildReviewerUserPrompt(notebook) {

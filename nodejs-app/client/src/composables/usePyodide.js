@@ -4,8 +4,72 @@
 
 let pyodideInstance = null
 let loadPromise = null
+const installedPackages = new Set(['micropip', 'matplotlib', 'numpy', 'pandas', 'networkx'])
 
 const PYODIDE_CDN = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'
+const BASE_PACKAGES = ['micropip', 'matplotlib', 'numpy', 'pandas', 'networkx']
+const STDLIB_MODULES = new Set([
+  'abc', 'argparse', 'array', 'base64', 'bisect', 'collections', 'copy', 'csv', 'datetime',
+  'decimal', 'enum', 'functools', 'hashlib', 'heapq', 'io', 'itertools', 'json', 'math',
+  'operator', 'os', 'random', 're', 'statistics', 'string', 'sys', 'textwrap', 'time',
+  'types', 'typing', 'uuid', 'warnings',
+])
+const PACKAGE_ALIASES = {
+  PIL: 'pillow',
+  bs4: 'beautifulsoup4',
+  cv2: 'opencv-python',
+  matplotlib: 'matplotlib',
+  mpl_toolkits: 'matplotlib',
+  networkx: 'networkx',
+  numpy: 'numpy',
+  pandas: 'pandas',
+  scipy: 'scipy',
+  seaborn: 'seaborn',
+  sklearn: 'scikit-learn',
+  statsmodels: 'statsmodels',
+  sympy: 'sympy',
+  wordcloud: 'wordcloud',
+}
+
+function importedModules(code) {
+  const modules = new Set()
+  const importRe = /^\s*import\s+([A-Za-z_][\w.]*(?:\s*,\s*[A-Za-z_][\w.]*)*)/gm
+  const fromRe = /^\s*from\s+([A-Za-z_][\w.]*)\s+import\s+/gm
+
+  for (const match of code.matchAll(importRe)) {
+    match[1].split(',').forEach((part) => {
+      const name = part.trim().split(/\s+as\s+/)[0].split('.')[0]
+      if (name) modules.add(name)
+    })
+  }
+  for (const match of code.matchAll(fromRe)) {
+    const name = match[1].split('.')[0]
+    if (name) modules.add(name)
+  }
+  return [...modules]
+}
+
+async function ensurePackagesForCode(pyodide, code) {
+  const packages = importedModules(code)
+    .filter((name) => !STDLIB_MODULES.has(name))
+    .map((name) => PACKAGE_ALIASES[name] || name)
+    .filter((name) => name && !installedPackages.has(name))
+
+  if (!packages.length) return []
+
+  const loaded = []
+  for (const pkg of [...new Set(packages)]) {
+    try {
+      await pyodide.loadPackage(pkg)
+    } catch {
+      const micropip = pyodide.pyimport('micropip')
+      await micropip.install(pkg)
+    }
+    installedPackages.add(pkg)
+    loaded.push(pkg)
+  }
+  return loaded
+}
 
 export function usePyodide() {
   async function loadPyodide() {
@@ -24,7 +88,7 @@ export function usePyodide() {
       }
 
       const pyodide = await window.loadPyodide({ indexURL: PYODIDE_CDN })
-      await pyodide.loadPackage(['micropip', 'matplotlib', 'numpy', 'pandas', 'networkx'])
+      await pyodide.loadPackage(BASE_PACKAGES)
 
       pyodide.runPython(`
 import matplotlib
@@ -42,7 +106,7 @@ import matplotlib.pyplot as plt
   async function runCell(code, analysisData) {
     const pyodide = await loadPyodide()
 
-    pyodide.globals.set('analysis_data', analysisData)
+    pyodide.globals.set('analysis_data', pyodide.toPy(analysisData || {}))
 
     const stdout = []
     const stderr = []
@@ -53,6 +117,8 @@ import matplotlib.pyplot as plt
     let result = { stdout: '', stderr: '', images: [], error: null }
 
     try {
+      const loadedPackages = await ensurePackagesForCode(pyodide, code)
+      if (loadedPackages.length) stdout.push(`已按需加载 Python 包: ${loadedPackages.join(', ')}\n`)
       await pyodide.runPythonAsync(code)
       result.stdout = stdout.join('')
       result.stderr = stderr.join('')

@@ -519,9 +519,10 @@ async function routeRequest(event, pathname, method) {
 
   if (method === 'POST' && pathname === '/generate-notebook') {
     if (!appState.analysisResult) throw apiError(400, '请先完成单文或多文分析', 'NO_ANALYSIS')
-    const { focusAreas, llmProvider } = await readJsonBody(event)
+    const { focusAreas, customRequest, llmProvider } = await readJsonBody(event)
     const result = await generateNotebook(appState.analysisResult, {
       focusAreas,
+      customRequest,
       provider: llmProvider || 'openai-compatible',
       mode: appState.analysisResult.mode,
     })

@@ -154,7 +154,16 @@ function renderCharts() {
       })
     }
 
-    data[0].value = data.reduce((s, d) => s + (d.value || 0), 0)
+    const childTotals = new Map()
+    data.forEach((d) => {
+      if (!d.parent) return
+      childTotals.set(d.parent, (childTotals.get(d.parent) || 0) + (d.value || 0))
+    })
+    data.forEach((d) => {
+      const childrenTotal = childTotals.get(d.id)
+      if (childrenTotal) d.value = childrenTotal
+    })
+    data[0].value = data.filter(d => d.parent === 'root').reduce((s, d) => s + (d.value || 0), 0)
     renderDocuburst([{ type: 'sunburst', ids: data.map(d => d.id), labels: data.map(d => d.labels), parents: data.map(d => d.parent), values: data.map(d => d.value), branchvalues: 'total', textinfo: 'label+percent parent', maxdepth: 3 }])
   }
 }
