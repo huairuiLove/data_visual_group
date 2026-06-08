@@ -12,7 +12,7 @@ import {
 
 const require = createRequire(path.join(process.cwd(), 'package.json'))
 
-const { runQuery } = require('../services/neo4j')
+const { runQuery, closeDriver } = require('../services/neo4j')
 const { chat, testConnection } = require('../services/llm')
 const { LocalEmbeddings, resetEmbeddings, testEmbeddings } = require('../services/embeddings')
 const {
@@ -46,6 +46,7 @@ const {
 const config = require('../config')
 
 const UPLOAD_DIR = path.join(process.cwd(), '..', 'data', 'uploads')
+const CACHE_DIR = path.join(process.cwd(), '..', 'data', 'cache')
 const MAX_UPLOAD_SIZE = 200 * 1024 * 1024
 const ALLOWED_UPLOAD_EXTENSIONS = new Set([
   '.doc',
@@ -309,6 +310,48 @@ async function handleBatchUpload(event) {
   return { success: true, results, total: results.filter((r) => r.success).length }
 }
 
+async function getNeo4jSummary() {
+  const [nodeRows, relRows, docRows, labelRows] = await Promise.all([
+    runQuery('MATCH (n) RETURN count(n) AS count'),
+    runQuery('MATCH ()-[r]->() RETURN count(r) AS count'),
+    runQuery('MATCH (d:Document) RETURN count(d) AS count'),
+    runQuery('CALL db.labels() YIELD label RETURN label ORDER BY label'),
+  ])
+
+  return {
+    nodes: nodeRows[0]?.count || 0,
+    relationships: relRows[0]?.count || 0,
+    documents: docRows[0]?.count || 0,
+    labels: labelRows.map((row) => row.label).filter(Boolean),
+  }
+}
+
+async function clearGraphCache() {
+  const entries = await fsp.readdir(CACHE_DIR).catch(() => [])
+  const files = entries.filter((name) => name.endsWith('.json'))
+  await Promise.all(files.map((name) => fsp.unlink(path.join(CACHE_DIR, name)).catch(() => {})))
+  return files.length
+}
+
+async function clearNeo4jAnalysisData(includeCache = true) {
+  const before = await getNeo4jSummary()
+  await runQuery('MATCH (n) DETACH DELETE n')
+  const deletedCacheFiles = includeCache ? await clearGraphCache() : 0
+  appState = {}
+  const after = await getNeo4jSummary()
+  return {
+    success: true,
+    before,
+    after,
+    deleted: {
+      nodes: before.nodes,
+      relationships: before.relationships,
+      documents: before.documents,
+      cacheFiles: deletedCacheFiles,
+    },
+  }
+}
+
 async function routeRequest(event, pathname, method) {
   if (method === 'GET' && pathname === '/settings') {
     return {
@@ -390,12 +433,38 @@ async function routeRequest(event, pathname, method) {
 
   if (method === 'POST' && pathname === '/neo4j/connect') {
     try {
+      const { url, username, password } = await readJsonBody(event)
+      const updates = {}
+      if (url) updates.NEO4J_URL = String(url).trim()
+      if (username) updates.NEO4J_USERNAME = String(username).trim()
+      if (password) updates.NEO4J_PASSWORD = String(password).trim()
+      if (Object.keys(updates).length) {
+        await updateEnvFile(updates)
+        config.neo4j = {
+          ...config.neo4j,
+          ...(updates.NEO4J_URL ? { url: updates.NEO4J_URL } : {}),
+          ...(updates.NEO4J_USERNAME ? { username: updates.NEO4J_USERNAME } : {}),
+          ...(updates.NEO4J_PASSWORD ? { password: updates.NEO4J_PASSWORD } : {}),
+        }
+        await closeDriver()
+      }
+
       const driver = require('../services/neo4j').getDriver()
       await driver.verifyConnectivity()
       return { success: true, message: '已成功连接到Neo4j数据库' }
     } catch (e) {
       return { success: false, message: e.message }
     }
+  }
+
+  if (method === 'GET' && pathname === '/neo4j/summary') {
+    return { success: true, summary: await getNeo4jSummary() }
+  }
+
+  if (method === 'POST' && pathname === '/neo4j/clear') {
+    const { confirm, includeCache } = await readJsonBody(event)
+    if (confirm !== 'DELETE') throw apiError(400, '清空数据库需要 confirm=DELETE', 'CONFIRM_REQUIRED')
+    return clearNeo4jAnalysisData(includeCache !== false)
   }
 
   if (method === 'POST' && pathname === '/upload') return handleUpload(event)

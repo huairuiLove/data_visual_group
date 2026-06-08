@@ -20,12 +20,27 @@ function getModelName(_provider = 'openai-compatible', _role = 'chat') {
   return config.llm?.model || 'qwen3-14b'
 }
 
+function parsePositiveInt(value, fallback) {
+  const n = Number.parseInt(value, 10)
+  return Number.isFinite(n) && n > 0 ? n : fallback
+}
+
+function resolveMaxTokens(model, options = {}) {
+  const baseTokens = options.maxTokens ?? (model.includes('pro') ? 8192 : 4096)
+  const multiplier = options.disableTokenMultiplier
+    ? 1
+    : parsePositiveInt(process.env.LLM_MAX_TOKEN_MULTIPLIER, 100)
+  const cap = parsePositiveInt(process.env.LLM_MAX_TOKENS_CAP, 1000000)
+  return Math.min(baseTokens * multiplier, cap)
+}
+
 function buildChatParams(model, messages, options = {}) {
+  const maxTokens = resolveMaxTokens(model, options)
   const params = {
     model,
     messages,
     temperature: options.temperature ?? 0.3,
-    max_tokens: options.maxTokens ?? (model.includes('pro') ? 8192 : 4096),
+    max_tokens: maxTokens,
     stream: false,
   }
 
@@ -59,7 +74,7 @@ async function chat(messages, provider = 'openai-compatible', options = {}) {
   let content = extractMessageContent(response.choices[0]?.message)
 
   if (!content) {
-    throw new Error(`LLM 返回空内容 (model=${model})，请检查模型名称或 max_tokens 设置`)
+    throw new Error(`LLM 返回空内容 (model=${model}, max_tokens=${params.max_tokens})，请检查模型名称或 max_tokens 设置`)
   }
   return content
 }
@@ -75,7 +90,7 @@ async function testConnection({ baseURL, apiKey, model } = {}) {
     const resp = await client.chat.completions.create({
       model: testModel,
       messages: [{ role: 'user', content: 'Hi!' }],
-      max_tokens: 20,
+      max_tokens: 2000,
       stream: false,
     })
     const msg = extractMessageContent(resp.choices[0]?.message)
@@ -91,6 +106,7 @@ module.exports = {
   buildChatParams,
   extractMessageContent,
   normalizeBaseURL,
+  resolveMaxTokens,
   chat,
   testConnection,
 }

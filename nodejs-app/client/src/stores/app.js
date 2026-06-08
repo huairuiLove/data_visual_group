@@ -143,6 +143,30 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
+  async function loadNeo4jSummary() {
+    try {
+      return await api.get('/neo4j/summary')
+    } catch (e) {
+      return { success: false, message: e.message }
+    }
+  }
+
+  async function clearNeo4jAnalysisData(includeCache = true) {
+    try {
+      const res = await api.post('/neo4j/clear', { confirm: 'DELETE', includeCache })
+      if (res.success) {
+        fileProcessed.value = false
+        currentFile.value = ''
+        currentFileHash.value = ''
+        analysisResult.value = null
+        clearPersistedState()
+      }
+      return res
+    } catch (e) {
+      return { success: false, message: e.message }
+    }
+  }
+
   async function confirmSetup(url, model, key) {
     try {
       const res = await api.post('/settings/llm', { baseURL: url, apiKey: key, model })
@@ -286,6 +310,8 @@ export const useAppStore = defineStore('app', () => {
     testLLM,
     testEmbeddings,
     connectNeo4j,
+    loadNeo4jSummary,
+    clearNeo4jAnalysisData,
     confirmSetup,
     confirmEmbeddings,
     uploadFile,

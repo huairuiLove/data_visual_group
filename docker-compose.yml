@@ -26,6 +26,8 @@ services:
       LLM_BASE_URL: http://llamacpp-llm:8080/v1
       LLM_MODEL: ${LLM_MODEL_NAME:-qwen3-14b}
       LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MAX_TOKEN_MULTIPLIER: ${LLM_MAX_TOKEN_MULTIPLIER:-100}
+      LLM_MAX_TOKENS_CAP: ${LLM_MAX_TOKENS_CAP:-1000000}
       LM_STUDIO_BASE_URL: http://llamacpp-embedding:8080/v1
       LM_STUDIO_EMBED_MODEL: ${EMBED_MODEL_NAME:-text-embedding-nomic-embed-text-v1.5}
     volumes:

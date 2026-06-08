@@ -158,6 +158,8 @@ cp .env.docker.example .env
 ```env
 LLAMACPP_LLM_MODEL=Qwen3-14B-Q4_K_M.gguf
 LLM_MODEL_NAME=qwen3-14b
+LLM_MAX_TOKEN_MULTIPLIER=100
+LLM_MAX_TOKENS_CAP=1000000
 
 LLAMACPP_EMBED_MODEL=nomic-embed-text-v1.5.Q4_K_M.gguf
 EMBED_MODEL_NAME=text-embedding-nomic-embed-text-v1.5
@@ -240,6 +242,8 @@ NEO4J_PASSWORD=dev_password_change_me
 LLM_BASE_URL=http://localhost:1234/v1
 LLM_MODEL=qwen3-14b
 LLM_API_KEY=
+LLM_MAX_TOKEN_MULTIPLIER=100
+LLM_MAX_TOKENS_CAP=1000000
 
 LM_STUDIO_BASE_URL=http://localhost:1234/v1
 LM_STUDIO_EMBED_MODEL=text-embedding-nomic-embed-text-v1.5
@@ -248,6 +252,8 @@ LM_STUDIO_EMBED_MODEL=text-embedding-nomic-embed-text-v1.5
 说明：
 
 - `LLM_*` 用于聊天、抽取、Notebook 生成、报告生成
+- `LLM_MAX_TOKEN_MULTIPLIER` 默认把代码中的生成预算放大 100 倍，避免模型只输出 reasoning 而正文为空
+- `LLM_MAX_TOKENS_CAP` 是最终 `max_tokens` 上限，默认 1000000；如果你的服务端上下文较小，可以下调
 - `LM_STUDIO_*` 用于 embedding
 - 本地 OpenAI-compatible 服务一般不需要 API Key
 - 侧边栏保存 API 或 embedding 设置时，会写回 `nodejs-app/.env`
@@ -282,6 +288,12 @@ nc -vz localhost 7687
 2. Neo4j 保持默认 URL、用户名、密码
 3. 点击连接
 4. 成功后再上传文档，否则图谱写入和问答检索会失败
+
+左侧设置栏还提供数据库管理：
+
+- 刷新数据库状态：查看节点、关系、Document 记录和标签
+- 清空错误分析数据：删除 Neo4j 中全部分析节点/关系/Document 记录，并删除本地图谱缓存
+- 清空后会同步清理前端持久化的当前分析状态，方便重新上传同一文档重新抽取
 
 ## LLM 推荐
 

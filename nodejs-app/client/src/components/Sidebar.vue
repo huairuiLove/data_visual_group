@@ -18,6 +18,9 @@ const neo4jUrl = ref('neo4j://localhost:7687')
 const neo4jUser = ref('neo4j')
 const neo4jPassword = ref('dev_password_change_me')
 const neo4jStatus = ref(null)
+const dbStatus = ref(null)
+const dbSummary = ref(null)
+const dbBusy = ref(false)
 
 const llmBaseUrlOptions = [
   'http://localhost:1234/v1',
@@ -86,6 +89,40 @@ async function handleConfirmSetup() {
 async function handleConnectNeo4j() {
   const res = await store.connectNeo4j(neo4jUrl.value, neo4jUser.value, neo4jPassword.value)
   setStatus(neo4jStatus, res.success, res.success ? 'Neo4j 已连接' : res.message)
+  if (res.success) await handleRefreshDatabase()
+}
+
+async function handleRefreshDatabase() {
+  dbBusy.value = true
+  const res = await store.loadNeo4jSummary()
+  dbBusy.value = false
+  if (!res.success) {
+    setStatus(dbStatus, false, res.message)
+    return
+  }
+  dbSummary.value = res.summary
+  setStatus(dbStatus, true, '数据库状态已刷新')
+}
+
+async function handleClearDatabase() {
+  const ok = window.confirm('将清空 Neo4j 中的分析节点、关系、Document 记录，并删除本地图谱缓存。此操作不可撤销。')
+  if (!ok) return
+
+  dbBusy.value = true
+  const res = await store.clearNeo4jAnalysisData(true)
+  dbBusy.value = false
+  if (!res.success) {
+    setStatus(dbStatus, false, res.message)
+    return
+  }
+
+  dbSummary.value = res.after
+  const deleted = res.deleted || {}
+  setStatus(
+    dbStatus,
+    true,
+    `已清空: ${deleted.nodes || 0} 节点、${deleted.relationships || 0} 关系、${deleted.documents || 0} 文档、${deleted.cacheFiles || 0} 缓存文件`
+  )
 }
 
 onMounted(async () => {
@@ -236,6 +273,57 @@ onMounted(async () => {
           >
             {{ neo4jStatus.message }}
           </v-alert>
+
+          <v-divider class="my-4" />
+          <div class="db-admin">
+            <div class="db-admin-header">
+              <span>数据库管理</span>
+              <v-btn
+                size="small"
+                variant="text"
+                :loading="dbBusy"
+                @click="handleRefreshDatabase"
+              >
+                刷新
+              </v-btn>
+            </div>
+            <div v-if="dbSummary" class="db-summary">
+              <div>
+                <strong>{{ dbSummary.nodes }}</strong>
+                <span>节点</span>
+              </div>
+              <div>
+                <strong>{{ dbSummary.relationships }}</strong>
+                <span>关系</span>
+              </div>
+              <div>
+                <strong>{{ dbSummary.documents }}</strong>
+                <span>文档</span>
+              </div>
+            </div>
+            <p v-if="dbSummary?.labels?.length" class="db-labels">
+              {{ dbSummary.labels.slice(0, 8).join(' / ') }}
+            </p>
+            <v-btn
+              block
+              color="error"
+              variant="outlined"
+              class="mt-3"
+              :loading="dbBusy"
+              @click="handleClearDatabase"
+            >
+              清空错误分析数据
+            </v-btn>
+            <v-alert
+              v-if="dbStatus"
+              :type="statusColor(dbStatus)"
+              variant="tonal"
+              density="compact"
+              class="mt-3"
+            >
+              {{ dbStatus.message }}
+            </v-alert>
+          </div>
         </v-expansion-panel-text>
       </v-expansion-panel>
     </v-expansion-panels>
@@ -328,5 +416,49 @@ onMounted(async () => {
 
 :deep(.v-alert) {
   margin-top: 14px;
+}
+
+.db-admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #dfe5e8;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.db-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.db-summary div {
+  min-height: 54px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.db-summary strong,
+.db-summary span {
+  display: block;
+}
+
+.db-summary strong {
+  font-size: 1.05rem;
+}
+
+.db-summary span,
+.db-labels {
+  color: #8e98a3;
+  font-size: 0.72rem;
+}
+
+.db-labels {
+  margin: 10px 0 0;
+  line-height: 1.5;
 }
 </style>
