@@ -1,0 +1,2560 @@
+{
+  "generated_at": "2026-06-08",
+  "triples": [
+    {
+      "subject": "Hussein-McMahon correspondence",
+      "predicate": "occurred_on",
+      "object": "1915-1916",
+      "qualifier": "Arab provinces of Ottoman Empire",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Hussein-McMahon correspondence",
+      "predicate": "has_event_type",
+      "object": "diplomacy",
+      "qualifier": 1915,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Britain",
+      "predicate": "participated_in",
+      "object": "Hussein-McMahon correspondence",
+      "qualifier": "Arab provinces of Ottoman Empire",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Hashemite leadership",
+      "predicate": "participated_in",
+      "object": "Hussein-McMahon correspondence",
+      "qualifier": "Arab provinces of Ottoman Empire",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Ottoman Empire",
+      "predicate": "participated_in",
+      "object": "Hussein-McMahon correspondence",
+      "qualifier": "Arab provinces of Ottoman Empire",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Sykes-Picot Agreement",
+      "predicate": "occurred_on",
+      "object": "1916-05",
+      "qualifier": "Levant; Mesopotamia",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Sykes-Picot Agreement",
+      "predicate": "has_event_type",
+      "object": "secret agreement",
+      "qualifier": 1916,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Britain",
+      "predicate": "participated_in",
+      "object": "Sykes-Picot Agreement",
+      "qualifier": "Levant; Mesopotamia",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "France",
+      "predicate": "participated_in",
+      "object": "Sykes-Picot Agreement",
+      "qualifier": "Levant; Mesopotamia",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Russia",
+      "predicate": "participated_in",
+      "object": "Sykes-Picot Agreement",
+      "qualifier": "Levant; Mesopotamia",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Ottoman territories",
+      "predicate": "participated_in",
+      "object": "Sykes-Picot Agreement",
+      "qualifier": "Levant; Mesopotamia",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Balfour Declaration",
+      "predicate": "occurred_on",
+      "object": "1917-11-02",
+      "qualifier": "Palestine",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Balfour Declaration",
+      "predicate": "has_event_type",
+      "object": "declaration",
+      "qualifier": 1917,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Britain",
+      "predicate": "participated_in",
+      "object": "Balfour Declaration",
+      "qualifier": "Palestine",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Zionist movement",
+      "predicate": "participated_in",
+      "object": "Balfour Declaration",
+      "qualifier": "Palestine",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Palestinian Arabs",
+      "predicate": "participated_in",
+      "object": "Balfour Declaration",
+      "qualifier": "Palestine",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "San Remo conference and Mandate system",
+      "predicate": "occurred_on",
+      "object": "1920-04",
+      "qualifier": "Levant; Iraq",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "San Remo conference and Mandate system",
+      "predicate": "has_event_type",
+      "object": "mandate",
+      "qualifier": 1920,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "League of Nations",
+      "predicate": "participated_in",
+      "object": "San Remo conference and Mandate system",
+      "qualifier": "Levant; Iraq",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Britain",
+      "predicate": "participated_in",
+      "object": "San Remo conference and Mandate system",
+      "qualifier": "Levant; Iraq",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "France",
+      "predicate": "participated_in",
+      "object": "San Remo conference and Mandate system",
+      "qualifier": "Levant; Iraq",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "British Mandate for Palestine confirmed",
+      "predicate": "occurred_on",
+      "object": "1922-07",
+      "qualifier": "Palestine",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "British Mandate for Palestine confirmed",
+      "predicate": "has_event_type",
+      "object": "mandate",
+      "qualifier": 1922,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "League of Nations",
+      "predicate": "participated_in",
+      "object": "British Mandate for Palestine confirmed",
+      "qualifier": "Palestine",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Britain",
+      "predicate": "participated_in",
+      "object": "British Mandate for Palestine confirmed",
+      "qualifier": "Palestine",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Arab Revolt in Palestine",
+      "predicate": "occurred_on",
+      "object": "1936-1939",
+      "qualifier": "Palestine",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Arab Revolt in Palestine",
+      "predicate": "has_event_type",
+      "object": "insurgency",
+      "qualifier": 1936,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Palestinian Arab groups",
+      "predicate": "participated_in",
+      "object": "Arab Revolt in Palestine",
+      "qualifier": "Palestine",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "British authorities",
+      "predicate": "participated_in",
+      "object": "Arab Revolt in Palestine",
+      "qualifier": "Palestine",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Jewish communities",
+      "predicate": "participated_in",
+      "object": "Arab Revolt in Palestine",
+      "qualifier": "Palestine",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "UN General Assembly Resolution 181 recommends partition",
+      "predicate": "occurred_on",
+      "object": "1947-11-29",
+      "qualifier": "Palestine; Jerusalem",
+      "source": "S03"
+    },
+    {
+      "subject": "UN General Assembly Resolution 181 recommends partition",
+      "predicate": "has_event_type",
+      "object": "UN resolution",
+      "qualifier": 1947,
+      "source": "S03"
+    },
+    {
+      "subject": "UNGA",
+      "predicate": "participated_in",
+      "object": "UN General Assembly Resolution 181 recommends partition",
+      "qualifier": "Palestine; Jerusalem",
+      "source": "S03"
+    },
+    {
+      "subject": "Jewish Agency",
+      "predicate": "participated_in",
+      "object": "UN General Assembly Resolution 181 recommends partition",
+      "qualifier": "Palestine; Jerusalem",
+      "source": "S03"
+    },
+    {
+      "subject": "Arab Higher Committee",
+      "predicate": "participated_in",
+      "object": "UN General Assembly Resolution 181 recommends partition",
+      "qualifier": "Palestine; Jerusalem",
+      "source": "S03"
+    },
+    {
+      "subject": "Israel declares independence; 1948 Arab-Israeli War begins",
+      "predicate": "occurred_on",
+      "object": "1948-05-14",
+      "qualifier": "Israel/Palestine",
+      "source": "S04"
+    },
+    {
+      "subject": "Israel declares independence; 1948 Arab-Israeli War begins",
+      "predicate": "has_event_type",
+      "object": "interstate war",
+      "qualifier": 1948,
+      "source": "S04"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Israel declares independence; 1948 Arab-Israeli War begins",
+      "qualifier": "Israel/Palestine",
+      "source": "S04"
+    },
+    {
+      "subject": "Egypt",
+      "predicate": "participated_in",
+      "object": "Israel declares independence; 1948 Arab-Israeli War begins",
+      "qualifier": "Israel/Palestine",
+      "source": "S04"
+    },
+    {
+      "subject": "Jordan",
+      "predicate": "participated_in",
+      "object": "Israel declares independence; 1948 Arab-Israeli War begins",
+      "qualifier": "Israel/Palestine",
+      "source": "S04"
+    },
+    {
+      "subject": "Syria",
+      "predicate": "participated_in",
+      "object": "Israel declares independence; 1948 Arab-Israeli War begins",
+      "qualifier": "Israel/Palestine",
+      "source": "S04"
+    },
+    {
+      "subject": "Lebanon",
+      "predicate": "participated_in",
+      "object": "Israel declares independence; 1948 Arab-Israeli War begins",
+      "qualifier": "Israel/Palestine",
+      "source": "S04"
+    },
+    {
+      "subject": "Palestinian refugee crisis and UNRWA context",
+      "predicate": "occurred_on",
+      "object": "1948-12",
+      "qualifier": "Palestine; neighboring Arab states",
+      "source": "S02"
+    },
+    {
+      "subject": "Palestinian refugee crisis and UNRWA context",
+      "predicate": "has_event_type",
+      "object": "displacement",
+      "qualifier": 1948,
+      "source": "S02"
+    },
+    {
+      "subject": "Palestinian refugees",
+      "predicate": "participated_in",
+      "object": "Palestinian refugee crisis and UNRWA context",
+      "qualifier": "Palestine; neighboring Arab states",
+      "source": "S02"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Palestinian refugee crisis and UNRWA context",
+      "qualifier": "Palestine; neighboring Arab states",
+      "source": "S02"
+    },
+    {
+      "subject": "Arab states",
+      "predicate": "participated_in",
+      "object": "Palestinian refugee crisis and UNRWA context",
+      "qualifier": "Palestine; neighboring Arab states",
+      "source": "S02"
+    },
+    {
+      "subject": "UN",
+      "predicate": "participated_in",
+      "object": "Palestinian refugee crisis and UNRWA context",
+      "qualifier": "Palestine; neighboring Arab states",
+      "source": "S02"
+    },
+    {
+      "subject": "Armistice lines / Green Line",
+      "predicate": "occurred_on",
+      "object": "1949",
+      "qualifier": "Israel; Gaza; West Bank; Jerusalem",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Armistice lines / Green Line",
+      "predicate": "has_event_type",
+      "object": "armistice",
+      "qualifier": 1949,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Armistice lines / Green Line",
+      "qualifier": "Israel; Gaza; West Bank; Jerusalem",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Egypt",
+      "predicate": "participated_in",
+      "object": "Armistice lines / Green Line",
+      "qualifier": "Israel; Gaza; West Bank; Jerusalem",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Jordan",
+      "predicate": "participated_in",
+      "object": "Armistice lines / Green Line",
+      "qualifier": "Israel; Gaza; West Bank; Jerusalem",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Syria",
+      "predicate": "participated_in",
+      "object": "Armistice lines / Green Line",
+      "qualifier": "Israel; Gaza; West Bank; Jerusalem",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Lebanon",
+      "predicate": "participated_in",
+      "object": "Armistice lines / Green Line",
+      "qualifier": "Israel; Gaza; West Bank; Jerusalem",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Suez Crisis",
+      "predicate": "occurred_on",
+      "object": "1956-10",
+      "qualifier": "Egypt; Sinai; Suez Canal",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Suez Crisis",
+      "predicate": "has_event_type",
+      "object": "interstate war",
+      "qualifier": 1956,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Egypt",
+      "predicate": "participated_in",
+      "object": "Suez Crisis",
+      "qualifier": "Egypt; Sinai; Suez Canal",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Suez Crisis",
+      "qualifier": "Egypt; Sinai; Suez Canal",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Britain",
+      "predicate": "participated_in",
+      "object": "Suez Crisis",
+      "qualifier": "Egypt; Sinai; Suez Canal",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "France",
+      "predicate": "participated_in",
+      "object": "Suez Crisis",
+      "qualifier": "Egypt; Sinai; Suez Canal",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "US",
+      "predicate": "participated_in",
+      "object": "Suez Crisis",
+      "qualifier": "Egypt; Sinai; Suez Canal",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "PLO founded",
+      "predicate": "occurred_on",
+      "object": "1964-05",
+      "qualifier": "Jerusalem; Arab League context",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "PLO founded",
+      "predicate": "has_event_type",
+      "object": "organization",
+      "qualifier": 1964,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "PLO",
+      "predicate": "participated_in",
+      "object": "PLO founded",
+      "qualifier": "Jerusalem; Arab League context",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Arab League",
+      "predicate": "participated_in",
+      "object": "PLO founded",
+      "qualifier": "Jerusalem; Arab League context",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Palestinian factions",
+      "predicate": "participated_in",
+      "object": "PLO founded",
+      "qualifier": "Jerusalem; Arab League context",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Six-Day War",
+      "predicate": "occurred_on",
+      "object": "1967-06",
+      "qualifier": "Sinai; Gaza; West Bank; East Jerusalem; Golan Heights",
+      "source": "S01"
+    },
+    {
+      "subject": "Six-Day War",
+      "predicate": "has_event_type",
+      "object": "interstate war",
+      "qualifier": 1967,
+      "source": "S01"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Six-Day War",
+      "qualifier": "Sinai; Gaza; West Bank; East Jerusalem; Golan Heights",
+      "source": "S01"
+    },
+    {
+      "subject": "Egypt",
+      "predicate": "participated_in",
+      "object": "Six-Day War",
+      "qualifier": "Sinai; Gaza; West Bank; East Jerusalem; Golan Heights",
+      "source": "S01"
+    },
+    {
+      "subject": "Jordan",
+      "predicate": "participated_in",
+      "object": "Six-Day War",
+      "qualifier": "Sinai; Gaza; West Bank; East Jerusalem; Golan Heights",
+      "source": "S01"
+    },
+    {
+      "subject": "Syria",
+      "predicate": "participated_in",
+      "object": "Six-Day War",
+      "qualifier": "Sinai; Gaza; West Bank; East Jerusalem; Golan Heights",
+      "source": "S01"
+    },
+    {
+      "subject": "Black September in Jordan",
+      "predicate": "occurred_on",
+      "object": "1970-09",
+      "qualifier": "Jordan",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Black September in Jordan",
+      "predicate": "has_event_type",
+      "object": "civil conflict",
+      "qualifier": 1970,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Jordanian monarchy",
+      "predicate": "participated_in",
+      "object": "Black September in Jordan",
+      "qualifier": "Jordan",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "PLO factions",
+      "predicate": "participated_in",
+      "object": "Black September in Jordan",
+      "qualifier": "Jordan",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Syria",
+      "predicate": "participated_in",
+      "object": "Black September in Jordan",
+      "qualifier": "Jordan",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Yom Kippur / October War",
+      "predicate": "occurred_on",
+      "object": "1973-10",
+      "qualifier": "Sinai; Golan Heights",
+      "source": "S01"
+    },
+    {
+      "subject": "Yom Kippur / October War",
+      "predicate": "has_event_type",
+      "object": "interstate war",
+      "qualifier": 1973,
+      "source": "S01"
+    },
+    {
+      "subject": "Egypt",
+      "predicate": "participated_in",
+      "object": "Yom Kippur / October War",
+      "qualifier": "Sinai; Golan Heights",
+      "source": "S01"
+    },
+    {
+      "subject": "Syria",
+      "predicate": "participated_in",
+      "object": "Yom Kippur / October War",
+      "qualifier": "Sinai; Golan Heights",
+      "source": "S01"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Yom Kippur / October War",
+      "qualifier": "Sinai; Golan Heights",
+      "source": "S01"
+    },
+    {
+      "subject": "US",
+      "predicate": "participated_in",
+      "object": "Yom Kippur / October War",
+      "qualifier": "Sinai; Golan Heights",
+      "source": "S01"
+    },
+    {
+      "subject": "USSR",
+      "predicate": "participated_in",
+      "object": "Yom Kippur / October War",
+      "qualifier": "Sinai; Golan Heights",
+      "source": "S01"
+    },
+    {
+      "subject": "Lebanese Civil War",
+      "predicate": "occurred_on",
+      "object": "1975-1990",
+      "qualifier": "Lebanon",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Lebanese Civil War",
+      "predicate": "has_event_type",
+      "object": "civil war",
+      "qualifier": 1975,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Maronite parties",
+      "predicate": "participated_in",
+      "object": "Lebanese Civil War",
+      "qualifier": "Lebanon",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Palestinian groups",
+      "predicate": "participated_in",
+      "object": "Lebanese Civil War",
+      "qualifier": "Lebanon",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Lebanese left",
+      "predicate": "participated_in",
+      "object": "Lebanese Civil War",
+      "qualifier": "Lebanon",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Syria",
+      "predicate": "participated_in",
+      "object": "Lebanese Civil War",
+      "qualifier": "Lebanon",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Lebanese Civil War",
+      "qualifier": "Lebanon",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Camp David Accords",
+      "predicate": "occurred_on",
+      "object": "1978-09",
+      "qualifier": "Egypt; Israel; Sinai",
+      "source": "S01"
+    },
+    {
+      "subject": "Camp David Accords",
+      "predicate": "has_event_type",
+      "object": "peace framework",
+      "qualifier": 1978,
+      "source": "S01"
+    },
+    {
+      "subject": "Egypt",
+      "predicate": "participated_in",
+      "object": "Camp David Accords",
+      "qualifier": "Egypt; Israel; Sinai",
+      "source": "S01"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Camp David Accords",
+      "qualifier": "Egypt; Israel; Sinai",
+      "source": "S01"
+    },
+    {
+      "subject": "US",
+      "predicate": "participated_in",
+      "object": "Camp David Accords",
+      "qualifier": "Egypt; Israel; Sinai",
+      "source": "S01"
+    },
+    {
+      "subject": "Iranian Revolution",
+      "predicate": "occurred_on",
+      "object": "1979-02",
+      "qualifier": "Iran; Gulf",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Iranian Revolution",
+      "predicate": "has_event_type",
+      "object": "regime change",
+      "qualifier": 1979,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Iranian revolutionaries",
+      "predicate": "participated_in",
+      "object": "Iranian Revolution",
+      "qualifier": "Iran; Gulf",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Pahlavi state",
+      "predicate": "participated_in",
+      "object": "Iranian Revolution",
+      "qualifier": "Iran; Gulf",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "US",
+      "predicate": "participated_in",
+      "object": "Iranian Revolution",
+      "qualifier": "Iran; Gulf",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "regional monarchies",
+      "predicate": "participated_in",
+      "object": "Iranian Revolution",
+      "qualifier": "Iran; Gulf",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Egypt-Israel Peace Treaty",
+      "predicate": "occurred_on",
+      "object": "1979-03",
+      "qualifier": "Egypt; Israel",
+      "source": "S01"
+    },
+    {
+      "subject": "Egypt-Israel Peace Treaty",
+      "predicate": "has_event_type",
+      "object": "peace treaty",
+      "qualifier": 1979,
+      "source": "S01"
+    },
+    {
+      "subject": "Egypt",
+      "predicate": "participated_in",
+      "object": "Egypt-Israel Peace Treaty",
+      "qualifier": "Egypt; Israel",
+      "source": "S01"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Egypt-Israel Peace Treaty",
+      "qualifier": "Egypt; Israel",
+      "source": "S01"
+    },
+    {
+      "subject": "US",
+      "predicate": "participated_in",
+      "object": "Egypt-Israel Peace Treaty",
+      "qualifier": "Egypt; Israel",
+      "source": "S01"
+    },
+    {
+      "subject": "Iran-Iraq War",
+      "predicate": "occurred_on",
+      "object": "1980-1988",
+      "qualifier": "Iran; Iraq; Gulf",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Iran-Iraq War",
+      "predicate": "has_event_type",
+      "object": "interstate war",
+      "qualifier": 1980,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Iran",
+      "predicate": "participated_in",
+      "object": "Iran-Iraq War",
+      "qualifier": "Iran; Iraq; Gulf",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Iraq",
+      "predicate": "participated_in",
+      "object": "Iran-Iraq War",
+      "qualifier": "Iran; Iraq; Gulf",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Gulf monarchies",
+      "predicate": "participated_in",
+      "object": "Iran-Iraq War",
+      "qualifier": "Iran; Iraq; Gulf",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "US",
+      "predicate": "participated_in",
+      "object": "Iran-Iraq War",
+      "qualifier": "Iran; Iraq; Gulf",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "USSR",
+      "predicate": "participated_in",
+      "object": "Iran-Iraq War",
+      "qualifier": "Iran; Iraq; Gulf",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Israel invades Lebanon; PLO expelled from Beirut",
+      "predicate": "occurred_on",
+      "object": "1982-06",
+      "qualifier": "Lebanon",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Israel invades Lebanon; PLO expelled from Beirut",
+      "predicate": "has_event_type",
+      "object": "interstate/occupation",
+      "qualifier": 1982,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Israel invades Lebanon; PLO expelled from Beirut",
+      "qualifier": "Lebanon",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "PLO",
+      "predicate": "participated_in",
+      "object": "Israel invades Lebanon; PLO expelled from Beirut",
+      "qualifier": "Lebanon",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Syria",
+      "predicate": "participated_in",
+      "object": "Israel invades Lebanon; PLO expelled from Beirut",
+      "qualifier": "Lebanon",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Lebanese militias",
+      "predicate": "participated_in",
+      "object": "Israel invades Lebanon; PLO expelled from Beirut",
+      "qualifier": "Lebanon",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "US mediators",
+      "predicate": "participated_in",
+      "object": "Israel invades Lebanon; PLO expelled from Beirut",
+      "qualifier": "Lebanon",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "First Intifada begins",
+      "predicate": "occurred_on",
+      "object": "1987-12",
+      "qualifier": "Gaza; West Bank; East Jerusalem",
+      "source": "S02"
+    },
+    {
+      "subject": "First Intifada begins",
+      "predicate": "has_event_type",
+      "object": "uprising",
+      "qualifier": 1987,
+      "source": "S02"
+    },
+    {
+      "subject": "Palestinian population",
+      "predicate": "participated_in",
+      "object": "First Intifada begins",
+      "qualifier": "Gaza; West Bank; East Jerusalem",
+      "source": "S02"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "First Intifada begins",
+      "qualifier": "Gaza; West Bank; East Jerusalem",
+      "source": "S02"
+    },
+    {
+      "subject": "PLO",
+      "predicate": "participated_in",
+      "object": "First Intifada begins",
+      "qualifier": "Gaza; West Bank; East Jerusalem",
+      "source": "S02"
+    },
+    {
+      "subject": "Hamas",
+      "predicate": "participated_in",
+      "object": "First Intifada begins",
+      "qualifier": "Gaza; West Bank; East Jerusalem",
+      "source": "S02"
+    },
+    {
+      "subject": "Palestine National Council proclaims State of Palestine",
+      "predicate": "occurred_on",
+      "object": "1988-11",
+      "qualifier": "Algiers; oPt",
+      "source": "S02"
+    },
+    {
+      "subject": "Palestine National Council proclaims State of Palestine",
+      "predicate": "has_event_type",
+      "object": "declaration",
+      "qualifier": 1988,
+      "source": "S02"
+    },
+    {
+      "subject": "PLO",
+      "predicate": "participated_in",
+      "object": "Palestine National Council proclaims State of Palestine",
+      "qualifier": "Algiers; oPt",
+      "source": "S02"
+    },
+    {
+      "subject": "Palestine National Council",
+      "predicate": "participated_in",
+      "object": "Palestine National Council proclaims State of Palestine",
+      "qualifier": "Algiers; oPt",
+      "source": "S02"
+    },
+    {
+      "subject": "Iraq invades Kuwait",
+      "predicate": "occurred_on",
+      "object": "1990-08",
+      "qualifier": "Kuwait; Iraq; Gulf",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Iraq invades Kuwait",
+      "predicate": "has_event_type",
+      "object": "interstate war",
+      "qualifier": 1990,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Iraq",
+      "predicate": "participated_in",
+      "object": "Iraq invades Kuwait",
+      "qualifier": "Kuwait; Iraq; Gulf",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Kuwait",
+      "predicate": "participated_in",
+      "object": "Iraq invades Kuwait",
+      "qualifier": "Kuwait; Iraq; Gulf",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "US-led coalition",
+      "predicate": "participated_in",
+      "object": "Iraq invades Kuwait",
+      "qualifier": "Kuwait; Iraq; Gulf",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "UN Security Council",
+      "predicate": "participated_in",
+      "object": "Iraq invades Kuwait",
+      "qualifier": "Kuwait; Iraq; Gulf",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Madrid Conference",
+      "predicate": "occurred_on",
+      "object": "1991-10",
+      "qualifier": "Madrid; Middle East",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Madrid Conference",
+      "predicate": "has_event_type",
+      "object": "peace conference",
+      "qualifier": 1991,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "US",
+      "predicate": "participated_in",
+      "object": "Madrid Conference",
+      "qualifier": "Madrid; Middle East",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "USSR",
+      "predicate": "participated_in",
+      "object": "Madrid Conference",
+      "qualifier": "Madrid; Middle East",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Madrid Conference",
+      "qualifier": "Madrid; Middle East",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Arab states",
+      "predicate": "participated_in",
+      "object": "Madrid Conference",
+      "qualifier": "Madrid; Middle East",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Palestinians",
+      "predicate": "participated_in",
+      "object": "Madrid Conference",
+      "qualifier": "Madrid; Middle East",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Oslo I Accords",
+      "predicate": "occurred_on",
+      "object": "1993-09",
+      "qualifier": "Israel; West Bank; Gaza",
+      "source": "S01"
+    },
+    {
+      "subject": "Oslo I Accords",
+      "predicate": "has_event_type",
+      "object": "peace process",
+      "qualifier": 1993,
+      "source": "S01"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Oslo I Accords",
+      "qualifier": "Israel; West Bank; Gaza",
+      "source": "S01"
+    },
+    {
+      "subject": "PLO",
+      "predicate": "participated_in",
+      "object": "Oslo I Accords",
+      "qualifier": "Israel; West Bank; Gaza",
+      "source": "S01"
+    },
+    {
+      "subject": "US",
+      "predicate": "participated_in",
+      "object": "Oslo I Accords",
+      "qualifier": "Israel; West Bank; Gaza",
+      "source": "S01"
+    },
+    {
+      "subject": "Norway",
+      "predicate": "participated_in",
+      "object": "Oslo I Accords",
+      "qualifier": "Israel; West Bank; Gaza",
+      "source": "S01"
+    },
+    {
+      "subject": "Jordan-Israel Peace Treaty",
+      "predicate": "occurred_on",
+      "object": "1994-10",
+      "qualifier": "Jordan; Israel",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Jordan-Israel Peace Treaty",
+      "predicate": "has_event_type",
+      "object": "peace treaty",
+      "qualifier": 1994,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Jordan",
+      "predicate": "participated_in",
+      "object": "Jordan-Israel Peace Treaty",
+      "qualifier": "Jordan; Israel",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Jordan-Israel Peace Treaty",
+      "qualifier": "Jordan; Israel",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "US",
+      "predicate": "participated_in",
+      "object": "Jordan-Israel Peace Treaty",
+      "qualifier": "Jordan; Israel",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Second Intifada begins",
+      "predicate": "occurred_on",
+      "object": "2000-09",
+      "qualifier": "West Bank; Gaza; Israel",
+      "source": "S01"
+    },
+    {
+      "subject": "Second Intifada begins",
+      "predicate": "has_event_type",
+      "object": "uprising/insurgency",
+      "qualifier": 2000,
+      "source": "S01"
+    },
+    {
+      "subject": "Palestinian armed groups",
+      "predicate": "participated_in",
+      "object": "Second Intifada begins",
+      "qualifier": "West Bank; Gaza; Israel",
+      "source": "S01"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Second Intifada begins",
+      "qualifier": "West Bank; Gaza; Israel",
+      "source": "S01"
+    },
+    {
+      "subject": "civilians",
+      "predicate": "participated_in",
+      "object": "Second Intifada begins",
+      "qualifier": "West Bank; Gaza; Israel",
+      "source": "S01"
+    },
+    {
+      "subject": "Arab Peace Initiative",
+      "predicate": "occurred_on",
+      "object": "2002",
+      "qualifier": "Beirut; Arab League",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Arab Peace Initiative",
+      "predicate": "has_event_type",
+      "object": "diplomatic proposal",
+      "qualifier": 2002,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Arab League",
+      "predicate": "participated_in",
+      "object": "Arab Peace Initiative",
+      "qualifier": "Beirut; Arab League",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Saudi Arabia",
+      "predicate": "participated_in",
+      "object": "Arab Peace Initiative",
+      "qualifier": "Beirut; Arab League",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Arab Peace Initiative",
+      "qualifier": "Beirut; Arab League",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Palestinians",
+      "predicate": "participated_in",
+      "object": "Arab Peace Initiative",
+      "qualifier": "Beirut; Arab League",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "U.S.-led invasion of Iraq",
+      "predicate": "occurred_on",
+      "object": "2003-03",
+      "qualifier": "Iraq",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "U.S.-led invasion of Iraq",
+      "predicate": "has_event_type",
+      "object": "intervention/regime change",
+      "qualifier": 2003,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "US",
+      "predicate": "participated_in",
+      "object": "U.S.-led invasion of Iraq",
+      "qualifier": "Iraq",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "UK",
+      "predicate": "participated_in",
+      "object": "U.S.-led invasion of Iraq",
+      "qualifier": "Iraq",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Iraq",
+      "predicate": "participated_in",
+      "object": "U.S.-led invasion of Iraq",
+      "qualifier": "Iraq",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "coalition",
+      "predicate": "participated_in",
+      "object": "U.S.-led invasion of Iraq",
+      "qualifier": "Iraq",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Iraqi factions",
+      "predicate": "participated_in",
+      "object": "U.S.-led invasion of Iraq",
+      "qualifier": "Iraq",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Israel disengages from Gaza",
+      "predicate": "occurred_on",
+      "object": "2005-08",
+      "qualifier": "Gaza",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Israel disengages from Gaza",
+      "predicate": "has_event_type",
+      "object": "withdrawal",
+      "qualifier": 2005,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Israel disengages from Gaza",
+      "qualifier": "Gaza",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Palestinian Authority",
+      "predicate": "participated_in",
+      "object": "Israel disengages from Gaza",
+      "qualifier": "Gaza",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Hamas",
+      "predicate": "participated_in",
+      "object": "Israel disengages from Gaza",
+      "qualifier": "Gaza",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Israel-Hezbollah War",
+      "predicate": "occurred_on",
+      "object": "2006-07",
+      "qualifier": "Lebanon; northern Israel",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Israel-Hezbollah War",
+      "predicate": "has_event_type",
+      "object": "war",
+      "qualifier": 2006,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Israel-Hezbollah War",
+      "qualifier": "Lebanon; northern Israel",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Hezbollah",
+      "predicate": "participated_in",
+      "object": "Israel-Hezbollah War",
+      "qualifier": "Lebanon; northern Israel",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Lebanon",
+      "predicate": "participated_in",
+      "object": "Israel-Hezbollah War",
+      "qualifier": "Lebanon; northern Israel",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Iran",
+      "predicate": "participated_in",
+      "object": "Israel-Hezbollah War",
+      "qualifier": "Lebanon; northern Israel",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Syria",
+      "predicate": "participated_in",
+      "object": "Israel-Hezbollah War",
+      "qualifier": "Lebanon; northern Israel",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Hamas wins Palestinian legislative elections",
+      "predicate": "occurred_on",
+      "object": "2006-01",
+      "qualifier": "Gaza; West Bank",
+      "source": "S01"
+    },
+    {
+      "subject": "Hamas wins Palestinian legislative elections",
+      "predicate": "has_event_type",
+      "object": "election/political rupture",
+      "qualifier": 2006,
+      "source": "S01"
+    },
+    {
+      "subject": "Hamas",
+      "predicate": "participated_in",
+      "object": "Hamas wins Palestinian legislative elections",
+      "qualifier": "Gaza; West Bank",
+      "source": "S01"
+    },
+    {
+      "subject": "Fatah",
+      "predicate": "participated_in",
+      "object": "Hamas wins Palestinian legislative elections",
+      "qualifier": "Gaza; West Bank",
+      "source": "S01"
+    },
+    {
+      "subject": "Palestinian Authority",
+      "predicate": "participated_in",
+      "object": "Hamas wins Palestinian legislative elections",
+      "qualifier": "Gaza; West Bank",
+      "source": "S01"
+    },
+    {
+      "subject": "Hamas takes control of Gaza; blockade era intensifies",
+      "predicate": "occurred_on",
+      "object": "2007-06",
+      "qualifier": "Gaza",
+      "source": "S01"
+    },
+    {
+      "subject": "Hamas takes control of Gaza; blockade era intensifies",
+      "predicate": "has_event_type",
+      "object": "internal conflict/blockade",
+      "qualifier": 2007,
+      "source": "S01"
+    },
+    {
+      "subject": "Hamas",
+      "predicate": "participated_in",
+      "object": "Hamas takes control of Gaza; blockade era intensifies",
+      "qualifier": "Gaza",
+      "source": "S01"
+    },
+    {
+      "subject": "Fatah",
+      "predicate": "participated_in",
+      "object": "Hamas takes control of Gaza; blockade era intensifies",
+      "qualifier": "Gaza",
+      "source": "S01"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Hamas takes control of Gaza; blockade era intensifies",
+      "qualifier": "Gaza",
+      "source": "S01"
+    },
+    {
+      "subject": "Egypt",
+      "predicate": "participated_in",
+      "object": "Hamas takes control of Gaza; blockade era intensifies",
+      "qualifier": "Gaza",
+      "source": "S01"
+    },
+    {
+      "subject": "Gaza War / Operation Cast Lead",
+      "predicate": "occurred_on",
+      "object": "2008-12",
+      "qualifier": "Gaza; Israel",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Gaza War / Operation Cast Lead",
+      "predicate": "has_event_type",
+      "object": "war",
+      "qualifier": 2008,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Gaza War / Operation Cast Lead",
+      "qualifier": "Gaza; Israel",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Hamas",
+      "predicate": "participated_in",
+      "object": "Gaza War / Operation Cast Lead",
+      "qualifier": "Gaza; Israel",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Palestinian civilians",
+      "predicate": "participated_in",
+      "object": "Gaza War / Operation Cast Lead",
+      "qualifier": "Gaza; Israel",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Syrian uprising becomes civil war",
+      "predicate": "occurred_on",
+      "object": "2011-03",
+      "qualifier": "Syria",
+      "source": "S13"
+    },
+    {
+      "subject": "Syrian uprising becomes civil war",
+      "predicate": "has_event_type",
+      "object": "uprising/civil war/proxy war",
+      "qualifier": 2011,
+      "source": "S13"
+    },
+    {
+      "subject": "Syrian government",
+      "predicate": "participated_in",
+      "object": "Syrian uprising becomes civil war",
+      "qualifier": "Syria",
+      "source": "S13"
+    },
+    {
+      "subject": "opposition",
+      "predicate": "participated_in",
+      "object": "Syrian uprising becomes civil war",
+      "qualifier": "Syria",
+      "source": "S13"
+    },
+    {
+      "subject": "Kurds",
+      "predicate": "participated_in",
+      "object": "Syrian uprising becomes civil war",
+      "qualifier": "Syria",
+      "source": "S13"
+    },
+    {
+      "subject": "jihadists",
+      "predicate": "participated_in",
+      "object": "Syrian uprising becomes civil war",
+      "qualifier": "Syria",
+      "source": "S13"
+    },
+    {
+      "subject": "Iran",
+      "predicate": "participated_in",
+      "object": "Syrian uprising becomes civil war",
+      "qualifier": "Syria",
+      "source": "S13"
+    },
+    {
+      "subject": "Yemen uprising and transition crisis",
+      "predicate": "occurred_on",
+      "object": "2011",
+      "qualifier": "Yemen",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Yemen uprising and transition crisis",
+      "predicate": "has_event_type",
+      "object": "uprising/transition",
+      "qualifier": 2011,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Saleh government",
+      "predicate": "participated_in",
+      "object": "Yemen uprising and transition crisis",
+      "qualifier": "Yemen",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "protesters",
+      "predicate": "participated_in",
+      "object": "Yemen uprising and transition crisis",
+      "qualifier": "Yemen",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Houthis",
+      "predicate": "participated_in",
+      "object": "Yemen uprising and transition crisis",
+      "qualifier": "Yemen",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Southern movement",
+      "predicate": "participated_in",
+      "object": "Yemen uprising and transition crisis",
+      "qualifier": "Yemen",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Gulf Cooperation Council",
+      "predicate": "participated_in",
+      "object": "Yemen uprising and transition crisis",
+      "qualifier": "Yemen",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "ISIS declares caliphate",
+      "predicate": "occurred_on",
+      "object": "2014-06",
+      "qualifier": "Iraq; Syria",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "ISIS declares caliphate",
+      "predicate": "has_event_type",
+      "object": "jihadist insurgency",
+      "qualifier": 2014,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "ISIS",
+      "predicate": "participated_in",
+      "object": "ISIS declares caliphate",
+      "qualifier": "Iraq; Syria",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Iraq",
+      "predicate": "participated_in",
+      "object": "ISIS declares caliphate",
+      "qualifier": "Iraq; Syria",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Syria",
+      "predicate": "participated_in",
+      "object": "ISIS declares caliphate",
+      "qualifier": "Iraq; Syria",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Kurds",
+      "predicate": "participated_in",
+      "object": "ISIS declares caliphate",
+      "qualifier": "Iraq; Syria",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "US-led coalition",
+      "predicate": "participated_in",
+      "object": "ISIS declares caliphate",
+      "qualifier": "Iraq; Syria",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Gaza War / Operation Protective Edge",
+      "predicate": "occurred_on",
+      "object": "2014-07",
+      "qualifier": "Gaza; Israel",
+      "source": "S01"
+    },
+    {
+      "subject": "Gaza War / Operation Protective Edge",
+      "predicate": "has_event_type",
+      "object": "war",
+      "qualifier": 2014,
+      "source": "S01"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Gaza War / Operation Protective Edge",
+      "qualifier": "Gaza; Israel",
+      "source": "S01"
+    },
+    {
+      "subject": "Hamas",
+      "predicate": "participated_in",
+      "object": "Gaza War / Operation Protective Edge",
+      "qualifier": "Gaza; Israel",
+      "source": "S01"
+    },
+    {
+      "subject": "Palestinian Islamic Jihad",
+      "predicate": "participated_in",
+      "object": "Gaza War / Operation Protective Edge",
+      "qualifier": "Gaza; Israel",
+      "source": "S01"
+    },
+    {
+      "subject": "Houthis take Sanaa",
+      "predicate": "occurred_on",
+      "object": "2014-09",
+      "qualifier": "Yemen",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Houthis take Sanaa",
+      "predicate": "has_event_type",
+      "object": "coup/insurgency",
+      "qualifier": 2014,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Houthis",
+      "predicate": "participated_in",
+      "object": "Houthis take Sanaa",
+      "qualifier": "Yemen",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Hadi government",
+      "predicate": "participated_in",
+      "object": "Houthis take Sanaa",
+      "qualifier": "Yemen",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Saleh forces",
+      "predicate": "participated_in",
+      "object": "Houthis take Sanaa",
+      "qualifier": "Yemen",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Saudi-led intervention in Yemen",
+      "predicate": "occurred_on",
+      "object": "2015-03",
+      "qualifier": "Yemen",
+      "source": "S10"
+    },
+    {
+      "subject": "Saudi-led intervention in Yemen",
+      "predicate": "has_event_type",
+      "object": "intervention/proxy war",
+      "qualifier": 2015,
+      "source": "S10"
+    },
+    {
+      "subject": "Saudi Arabia",
+      "predicate": "participated_in",
+      "object": "Saudi-led intervention in Yemen",
+      "qualifier": "Yemen",
+      "source": "S10"
+    },
+    {
+      "subject": "UAE",
+      "predicate": "participated_in",
+      "object": "Saudi-led intervention in Yemen",
+      "qualifier": "Yemen",
+      "source": "S10"
+    },
+    {
+      "subject": "Houthis",
+      "predicate": "participated_in",
+      "object": "Saudi-led intervention in Yemen",
+      "qualifier": "Yemen",
+      "source": "S10"
+    },
+    {
+      "subject": "Hadi government",
+      "predicate": "participated_in",
+      "object": "Saudi-led intervention in Yemen",
+      "qualifier": "Yemen",
+      "source": "S10"
+    },
+    {
+      "subject": "Iran",
+      "predicate": "participated_in",
+      "object": "Saudi-led intervention in Yemen",
+      "qualifier": "Yemen",
+      "source": "S10"
+    },
+    {
+      "subject": "JCPOA nuclear agreement",
+      "predicate": "occurred_on",
+      "object": "2015-07",
+      "qualifier": "Iran; P5+1",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "JCPOA nuclear agreement",
+      "predicate": "has_event_type",
+      "object": "nuclear diplomacy",
+      "qualifier": 2015,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Iran",
+      "predicate": "participated_in",
+      "object": "JCPOA nuclear agreement",
+      "qualifier": "Iran; P5+1",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "US",
+      "predicate": "participated_in",
+      "object": "JCPOA nuclear agreement",
+      "qualifier": "Iran; P5+1",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "EU",
+      "predicate": "participated_in",
+      "object": "JCPOA nuclear agreement",
+      "qualifier": "Iran; P5+1",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Russia",
+      "predicate": "participated_in",
+      "object": "JCPOA nuclear agreement",
+      "qualifier": "Iran; P5+1",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "China",
+      "predicate": "participated_in",
+      "object": "JCPOA nuclear agreement",
+      "qualifier": "Iran; P5+1",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "US withdraws from JCPOA",
+      "predicate": "occurred_on",
+      "object": "2018-05",
+      "qualifier": "Iran; US",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "US withdraws from JCPOA",
+      "predicate": "has_event_type",
+      "object": "policy shift/sanctions",
+      "qualifier": 2018,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "US",
+      "predicate": "participated_in",
+      "object": "US withdraws from JCPOA",
+      "qualifier": "Iran; US",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Iran",
+      "predicate": "participated_in",
+      "object": "US withdraws from JCPOA",
+      "qualifier": "Iran; US",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "EU",
+      "predicate": "participated_in",
+      "object": "US withdraws from JCPOA",
+      "qualifier": "Iran; US",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Attacks on Saudi oil facilities",
+      "predicate": "occurred_on",
+      "object": "2019-09",
+      "qualifier": "Saudi Arabia; Gulf",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Attacks on Saudi oil facilities",
+      "predicate": "has_event_type",
+      "object": "strike/infrastructure attack",
+      "qualifier": 2019,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Saudi Arabia",
+      "predicate": "participated_in",
+      "object": "Attacks on Saudi oil facilities",
+      "qualifier": "Saudi Arabia; Gulf",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Houthis",
+      "predicate": "participated_in",
+      "object": "Attacks on Saudi oil facilities",
+      "qualifier": "Saudi Arabia; Gulf",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Iran",
+      "predicate": "participated_in",
+      "object": "Attacks on Saudi oil facilities",
+      "qualifier": "Saudi Arabia; Gulf",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "US",
+      "predicate": "participated_in",
+      "object": "Attacks on Saudi oil facilities",
+      "qualifier": "Saudi Arabia; Gulf",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "US kills Qassem Soleimani",
+      "predicate": "occurred_on",
+      "object": "2020-01-03",
+      "qualifier": "Iraq; Iran; US",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "US kills Qassem Soleimani",
+      "predicate": "has_event_type",
+      "object": "targeted killing",
+      "qualifier": 2020,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "US",
+      "predicate": "participated_in",
+      "object": "US kills Qassem Soleimani",
+      "qualifier": "Iraq; Iran; US",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "IRGC-Quds Force",
+      "predicate": "participated_in",
+      "object": "US kills Qassem Soleimani",
+      "qualifier": "Iraq; Iran; US",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Iraq",
+      "predicate": "participated_in",
+      "object": "US kills Qassem Soleimani",
+      "qualifier": "Iraq; Iran; US",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Iran-backed militias",
+      "predicate": "participated_in",
+      "object": "US kills Qassem Soleimani",
+      "qualifier": "Iraq; Iran; US",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Abraham Accords",
+      "predicate": "occurred_on",
+      "object": "2020",
+      "qualifier": "UAE; Bahrain; Israel; Morocco; Sudan; US",
+      "source": "S01"
+    },
+    {
+      "subject": "Abraham Accords",
+      "predicate": "has_event_type",
+      "object": "normalization",
+      "qualifier": 2020,
+      "source": "S01"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Abraham Accords",
+      "qualifier": "UAE; Bahrain; Israel; Morocco; Sudan; US",
+      "source": "S01"
+    },
+    {
+      "subject": "UAE",
+      "predicate": "participated_in",
+      "object": "Abraham Accords",
+      "qualifier": "UAE; Bahrain; Israel; Morocco; Sudan; US",
+      "source": "S01"
+    },
+    {
+      "subject": "Bahrain",
+      "predicate": "participated_in",
+      "object": "Abraham Accords",
+      "qualifier": "UAE; Bahrain; Israel; Morocco; Sudan; US",
+      "source": "S01"
+    },
+    {
+      "subject": "Morocco",
+      "predicate": "participated_in",
+      "object": "Abraham Accords",
+      "qualifier": "UAE; Bahrain; Israel; Morocco; Sudan; US",
+      "source": "S01"
+    },
+    {
+      "subject": "Sudan",
+      "predicate": "participated_in",
+      "object": "Abraham Accords",
+      "qualifier": "UAE; Bahrain; Israel; Morocco; Sudan; US",
+      "source": "S01"
+    },
+    {
+      "subject": "Gaza-Israel conflict and Jerusalem unrest",
+      "predicate": "occurred_on",
+      "object": "2021-05",
+      "qualifier": "Gaza; Jerusalem; Israel",
+      "source": "S01"
+    },
+    {
+      "subject": "Gaza-Israel conflict and Jerusalem unrest",
+      "predicate": "has_event_type",
+      "object": "war/civil unrest",
+      "qualifier": 2021,
+      "source": "S01"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Gaza-Israel conflict and Jerusalem unrest",
+      "qualifier": "Gaza; Jerusalem; Israel",
+      "source": "S01"
+    },
+    {
+      "subject": "Hamas",
+      "predicate": "participated_in",
+      "object": "Gaza-Israel conflict and Jerusalem unrest",
+      "qualifier": "Gaza; Jerusalem; Israel",
+      "source": "S01"
+    },
+    {
+      "subject": "Palestinian civilians",
+      "predicate": "participated_in",
+      "object": "Gaza-Israel conflict and Jerusalem unrest",
+      "qualifier": "Gaza; Jerusalem; Israel",
+      "source": "S01"
+    },
+    {
+      "subject": "Israeli civilians",
+      "predicate": "participated_in",
+      "object": "Gaza-Israel conflict and Jerusalem unrest",
+      "qualifier": "Gaza; Jerusalem; Israel",
+      "source": "S01"
+    },
+    {
+      "subject": "Yemen truce begins",
+      "predicate": "occurred_on",
+      "object": "2022-04",
+      "qualifier": "Yemen",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Yemen truce begins",
+      "predicate": "has_event_type",
+      "object": "truce",
+      "qualifier": 2022,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Houthis",
+      "predicate": "participated_in",
+      "object": "Yemen truce begins",
+      "qualifier": "Yemen",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Saudi-led coalition",
+      "predicate": "participated_in",
+      "object": "Yemen truce begins",
+      "qualifier": "Yemen",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "UN",
+      "predicate": "participated_in",
+      "object": "Yemen truce begins",
+      "qualifier": "Yemen",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Hamas-led attack on southern Israel",
+      "predicate": "occurred_on",
+      "object": "2023-10-07",
+      "qualifier": "Southern Israel; Gaza",
+      "source": "S01"
+    },
+    {
+      "subject": "Hamas-led attack on southern Israel",
+      "predicate": "has_event_type",
+      "object": "mass attack/war trigger",
+      "qualifier": 2023,
+      "source": "S01"
+    },
+    {
+      "subject": "Hamas",
+      "predicate": "participated_in",
+      "object": "Hamas-led attack on southern Israel",
+      "qualifier": "Southern Israel; Gaza",
+      "source": "S01"
+    },
+    {
+      "subject": "Palestinian Islamic Jihad",
+      "predicate": "participated_in",
+      "object": "Hamas-led attack on southern Israel",
+      "qualifier": "Southern Israel; Gaza",
+      "source": "S01"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Hamas-led attack on southern Israel",
+      "qualifier": "Southern Israel; Gaza",
+      "source": "S01"
+    },
+    {
+      "subject": "civilians",
+      "predicate": "participated_in",
+      "object": "Hamas-led attack on southern Israel",
+      "qualifier": "Southern Israel; Gaza",
+      "source": "S01"
+    },
+    {
+      "subject": "Israel-Hamas war in Gaza",
+      "predicate": "occurred_on",
+      "object": "2023-10 onward",
+      "qualifier": "Gaza; Israel",
+      "source": "S05;S07"
+    },
+    {
+      "subject": "Israel-Hamas war in Gaza",
+      "predicate": "has_event_type",
+      "object": "war/humanitarian crisis",
+      "qualifier": 2023,
+      "source": "S05;S07"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Israel-Hamas war in Gaza",
+      "qualifier": "Gaza; Israel",
+      "source": "S05;S07"
+    },
+    {
+      "subject": "Hamas",
+      "predicate": "participated_in",
+      "object": "Israel-Hamas war in Gaza",
+      "qualifier": "Gaza; Israel",
+      "source": "S05;S07"
+    },
+    {
+      "subject": "PIJ",
+      "predicate": "participated_in",
+      "object": "Israel-Hamas war in Gaza",
+      "qualifier": "Gaza; Israel",
+      "source": "S05;S07"
+    },
+    {
+      "subject": "civilians",
+      "predicate": "participated_in",
+      "object": "Israel-Hamas war in Gaza",
+      "qualifier": "Gaza; Israel",
+      "source": "S05;S07"
+    },
+    {
+      "subject": "Egypt",
+      "predicate": "participated_in",
+      "object": "Israel-Hamas war in Gaza",
+      "qualifier": "Gaza; Israel",
+      "source": "S05;S07"
+    },
+    {
+      "subject": "Houthi Red Sea attacks linked to Gaza war",
+      "predicate": "occurred_on",
+      "object": "2023-11 onward",
+      "qualifier": "Red Sea; Bab el-Mandeb; Yemen",
+      "source": "S11;S14"
+    },
+    {
+      "subject": "Houthi Red Sea attacks linked to Gaza war",
+      "predicate": "has_event_type",
+      "object": "maritime conflict",
+      "qualifier": 2023,
+      "source": "S11;S14"
+    },
+    {
+      "subject": "Houthis",
+      "predicate": "participated_in",
+      "object": "Houthi Red Sea attacks linked to Gaza war",
+      "qualifier": "Red Sea; Bab el-Mandeb; Yemen",
+      "source": "S11;S14"
+    },
+    {
+      "subject": "Israel-linked shipping",
+      "predicate": "participated_in",
+      "object": "Houthi Red Sea attacks linked to Gaza war",
+      "qualifier": "Red Sea; Bab el-Mandeb; Yemen",
+      "source": "S11;S14"
+    },
+    {
+      "subject": "US",
+      "predicate": "participated_in",
+      "object": "Houthi Red Sea attacks linked to Gaza war",
+      "qualifier": "Red Sea; Bab el-Mandeb; Yemen",
+      "source": "S11;S14"
+    },
+    {
+      "subject": "UK",
+      "predicate": "participated_in",
+      "object": "Houthi Red Sea attacks linked to Gaza war",
+      "qualifier": "Red Sea; Bab el-Mandeb; Yemen",
+      "source": "S11;S14"
+    },
+    {
+      "subject": "commercial shipping",
+      "predicate": "participated_in",
+      "object": "Houthi Red Sea attacks linked to Gaza war",
+      "qualifier": "Red Sea; Bab el-Mandeb; Yemen",
+      "source": "S11;S14"
+    },
+    {
+      "subject": "Iran-Israel direct exchange after embassy-consulate strike cycle",
+      "predicate": "occurred_on",
+      "object": "2024-04",
+      "qualifier": "Syria; Israel; Iran",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Iran-Israel direct exchange after embassy-consulate strike cycle",
+      "predicate": "has_event_type",
+      "object": "direct state exchange",
+      "qualifier": 2024,
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Iran",
+      "predicate": "participated_in",
+      "object": "Iran-Israel direct exchange after embassy-consulate strike cycle",
+      "qualifier": "Syria; Israel; Iran",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Iran-Israel direct exchange after embassy-consulate strike cycle",
+      "qualifier": "Syria; Israel; Iran",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "US",
+      "predicate": "participated_in",
+      "object": "Iran-Israel direct exchange after embassy-consulate strike cycle",
+      "qualifier": "Syria; Israel; Iran",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "regional partners",
+      "predicate": "participated_in",
+      "object": "Iran-Israel direct exchange after embassy-consulate strike cycle",
+      "qualifier": "Syria; Israel; Iran",
+      "source": "secondary-historical"
+    },
+    {
+      "subject": "Lebanon conflict intensifies after nearly a year of border fire",
+      "predicate": "occurred_on",
+      "object": "2024-09",
+      "qualifier": "Lebanon; northern Israel",
+      "source": "S09"
+    },
+    {
+      "subject": "Lebanon conflict intensifies after nearly a year of border fire",
+      "predicate": "has_event_type",
+      "object": "war/escalation",
+      "qualifier": 2024,
+      "source": "S09"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Lebanon conflict intensifies after nearly a year of border fire",
+      "qualifier": "Lebanon; northern Israel",
+      "source": "S09"
+    },
+    {
+      "subject": "Hezbollah",
+      "predicate": "participated_in",
+      "object": "Lebanon conflict intensifies after nearly a year of border fire",
+      "qualifier": "Lebanon; northern Israel",
+      "source": "S09"
+    },
+    {
+      "subject": "Lebanese civilians",
+      "predicate": "participated_in",
+      "object": "Lebanon conflict intensifies after nearly a year of border fire",
+      "qualifier": "Lebanon; northern Israel",
+      "source": "S09"
+    },
+    {
+      "subject": "UN",
+      "predicate": "participated_in",
+      "object": "Lebanon conflict intensifies after nearly a year of border fire",
+      "qualifier": "Lebanon; northern Israel",
+      "source": "S09"
+    },
+    {
+      "subject": "Ceasefire agreement referenced in Gaza reporting",
+      "predicate": "occurred_on",
+      "object": "2025-10-10",
+      "qualifier": "Gaza; Israel",
+      "source": "S05;S07"
+    },
+    {
+      "subject": "Ceasefire agreement referenced in Gaza reporting",
+      "predicate": "has_event_type",
+      "object": "ceasefire/truce",
+      "qualifier": 2025,
+      "source": "S05;S07"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Ceasefire agreement referenced in Gaza reporting",
+      "qualifier": "Gaza; Israel",
+      "source": "S05;S07"
+    },
+    {
+      "subject": "Hamas",
+      "predicate": "participated_in",
+      "object": "Ceasefire agreement referenced in Gaza reporting",
+      "qualifier": "Gaza; Israel",
+      "source": "S05;S07"
+    },
+    {
+      "subject": "US",
+      "predicate": "participated_in",
+      "object": "Ceasefire agreement referenced in Gaza reporting",
+      "qualifier": "Gaza; Israel",
+      "source": "S05;S07"
+    },
+    {
+      "subject": "Egypt",
+      "predicate": "participated_in",
+      "object": "Ceasefire agreement referenced in Gaza reporting",
+      "qualifier": "Gaza; Israel",
+      "source": "S05;S07"
+    },
+    {
+      "subject": "Qatar",
+      "predicate": "participated_in",
+      "object": "Ceasefire agreement referenced in Gaza reporting",
+      "qualifier": "Gaza; Israel",
+      "source": "S05;S07"
+    },
+    {
+      "subject": "UN warns Yemen crisis will worsen in 2026",
+      "predicate": "occurred_on",
+      "object": "2026-01-19",
+      "qualifier": "Yemen",
+      "source": "S10"
+    },
+    {
+      "subject": "UN warns Yemen crisis will worsen in 2026",
+      "predicate": "has_event_type",
+      "object": "humanitarian warning",
+      "qualifier": 2026,
+      "source": "S10"
+    },
+    {
+      "subject": "UN",
+      "predicate": "participated_in",
+      "object": "UN warns Yemen crisis will worsen in 2026",
+      "qualifier": "Yemen",
+      "source": "S10"
+    },
+    {
+      "subject": "Yemenis",
+      "predicate": "participated_in",
+      "object": "UN warns Yemen crisis will worsen in 2026",
+      "qualifier": "Yemen",
+      "source": "S10"
+    },
+    {
+      "subject": "Houthis",
+      "predicate": "participated_in",
+      "object": "UN warns Yemen crisis will worsen in 2026",
+      "qualifier": "Yemen",
+      "source": "S10"
+    },
+    {
+      "subject": "donors",
+      "predicate": "participated_in",
+      "object": "UN warns Yemen crisis will worsen in 2026",
+      "qualifier": "Yemen",
+      "source": "S10"
+    },
+    {
+      "subject": "Lebanon drawn into wider regional war",
+      "predicate": "occurred_on",
+      "object": "2026-03-02",
+      "qualifier": "Lebanon; Israel; Iran",
+      "source": "S08;S09"
+    },
+    {
+      "subject": "Lebanon drawn into wider regional war",
+      "predicate": "has_event_type",
+      "object": "regional escalation",
+      "qualifier": 2026,
+      "source": "S08;S09"
+    },
+    {
+      "subject": "Hezbollah",
+      "predicate": "participated_in",
+      "object": "Lebanon drawn into wider regional war",
+      "qualifier": "Lebanon; Israel; Iran",
+      "source": "S08;S09"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Lebanon drawn into wider regional war",
+      "qualifier": "Lebanon; Israel; Iran",
+      "source": "S08;S09"
+    },
+    {
+      "subject": "Iran",
+      "predicate": "participated_in",
+      "object": "Lebanon drawn into wider regional war",
+      "qualifier": "Lebanon; Israel; Iran",
+      "source": "S08;S09"
+    },
+    {
+      "subject": "US",
+      "predicate": "participated_in",
+      "object": "Lebanon drawn into wider regional war",
+      "qualifier": "Lebanon; Israel; Iran",
+      "source": "S08;S09"
+    },
+    {
+      "subject": "Lebanese civilians",
+      "predicate": "participated_in",
+      "object": "Lebanon drawn into wider regional war",
+      "qualifier": "Lebanon; Israel; Iran",
+      "source": "S08;S09"
+    },
+    {
+      "subject": "U.S.-brokered Lebanon ceasefire begins but fighting continues",
+      "predicate": "occurred_on",
+      "object": "2026-04-17",
+      "qualifier": "Lebanon",
+      "source": "S08"
+    },
+    {
+      "subject": "U.S.-brokered Lebanon ceasefire begins but fighting continues",
+      "predicate": "has_event_type",
+      "object": "ceasefire/partial compliance",
+      "qualifier": 2026,
+      "source": "S08"
+    },
+    {
+      "subject": "US",
+      "predicate": "participated_in",
+      "object": "U.S.-brokered Lebanon ceasefire begins but fighting continues",
+      "qualifier": "Lebanon",
+      "source": "S08"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "U.S.-brokered Lebanon ceasefire begins but fighting continues",
+      "qualifier": "Lebanon",
+      "source": "S08"
+    },
+    {
+      "subject": "Lebanon",
+      "predicate": "participated_in",
+      "object": "U.S.-brokered Lebanon ceasefire begins but fighting continues",
+      "qualifier": "Lebanon",
+      "source": "S08"
+    },
+    {
+      "subject": "Hezbollah",
+      "predicate": "participated_in",
+      "object": "U.S.-brokered Lebanon ceasefire begins but fighting continues",
+      "qualifier": "Lebanon",
+      "source": "S08"
+    },
+    {
+      "subject": "OCHA Gaza situation report snapshot",
+      "predicate": "occurred_on",
+      "object": "2026-06-03",
+      "qualifier": "Gaza; West Bank",
+      "source": "S05;S06"
+    },
+    {
+      "subject": "OCHA Gaza situation report snapshot",
+      "predicate": "has_event_type",
+      "object": "humanitarian data",
+      "qualifier": 2026,
+      "source": "S05;S06"
+    },
+    {
+      "subject": "OCHA",
+      "predicate": "participated_in",
+      "object": "OCHA Gaza situation report snapshot",
+      "qualifier": "Gaza; West Bank",
+      "source": "S05;S06"
+    },
+    {
+      "subject": "MoH Gaza",
+      "predicate": "participated_in",
+      "object": "OCHA Gaza situation report snapshot",
+      "qualifier": "Gaza; West Bank",
+      "source": "S05;S06"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "OCHA Gaza situation report snapshot",
+      "qualifier": "Gaza; West Bank",
+      "source": "S05;S06"
+    },
+    {
+      "subject": "humanitarian partners",
+      "predicate": "participated_in",
+      "object": "OCHA Gaza situation report snapshot",
+      "qualifier": "Gaza; West Bank",
+      "source": "S05;S06"
+    },
+    {
+      "subject": "Reuters reports Gaza strikes and control-zone expansion",
+      "predicate": "occurred_on",
+      "object": "2026-06-08",
+      "qualifier": "Gaza",
+      "source": "S07"
+    },
+    {
+      "subject": "Reuters reports Gaza strikes and control-zone expansion",
+      "predicate": "has_event_type",
+      "object": "war/negotiation",
+      "qualifier": 2026,
+      "source": "S07"
+    },
+    {
+      "subject": "Israel",
+      "predicate": "participated_in",
+      "object": "Reuters reports Gaza strikes and control-zone expansion",
+      "qualifier": "Gaza",
+      "source": "S07"
+    },
+    {
+      "subject": "Hamas",
+      "predicate": "participated_in",
+      "object": "Reuters reports Gaza strikes and control-zone expansion",
+      "qualifier": "Gaza",
+      "source": "S07"
+    },
+    {
+      "subject": "Egypt mediators",
+      "predicate": "participated_in",
+      "object": "Reuters reports Gaza strikes and control-zone expansion",
+      "qualifier": "Gaza",
+      "source": "S07"
+    },
+    {
+      "subject": "Palestinian civilians",
+      "predicate": "participated_in",
+      "object": "Reuters reports Gaza strikes and control-zone expansion",
+      "qualifier": "Gaza",
+      "source": "S07"
+    },
+    {
+      "subject": "Houthis threaten Israeli shipping in Red Sea",
+      "predicate": "occurred_on",
+      "object": "2026-06-08",
+      "qualifier": "Yemen; Red Sea",
+      "source": "S11"
+    },
+    {
+      "subject": "Houthis threaten Israeli shipping in Red Sea",
+      "predicate": "has_event_type",
+      "object": "maritime threat",
+      "qualifier": 2026,
+      "source": "S11"
+    },
+    {
+      "subject": "Houthis",
+      "predicate": "participated_in",
+      "object": "Houthis threaten Israeli shipping in Red Sea",
+      "qualifier": "Yemen; Red Sea",
+      "source": "S11"
+    },
+    {
+      "subject": "Israel-linked shipping",
+      "predicate": "participated_in",
+      "object": "Houthis threaten Israeli shipping in Red Sea",
+      "qualifier": "Yemen; Red Sea",
+      "source": "S11"
+    },
+    {
+      "subject": "Iran",
+      "predicate": "participated_in",
+      "object": "Houthis threaten Israeli shipping in Red Sea",
+      "qualifier": "Yemen; Red Sea",
+      "source": "S11"
+    },
+    {
+      "subject": "commercial shipping",
+      "predicate": "participated_in",
+      "object": "Houthis threaten Israeli shipping in Red Sea",
+      "qualifier": "Yemen; Red Sea",
+      "source": "S11"
+    },
+    {
+      "subject": "UNGA Resolution 181",
+      "predicate": "recommended",
+      "object": "Partition of Palestine into Arab and Jewish states",
+      "qualifier": "with special international regime for Jerusalem",
+      "source": "S03"
+    },
+    {
+      "subject": "1967 Six-Day War",
+      "predicate": "created_or_deepened",
+      "object": "Israeli occupation of West Bank, Gaza, East Jerusalem, Golan Heights",
+      "qualifier": "land-for-peace issue",
+      "source": "S01"
+    },
+    {
+      "subject": "Hamas-led attack on southern Israel",
+      "predicate": "triggered",
+      "object": "Israel-Hamas war in Gaza",
+      "qualifier": "2023-10 onward",
+      "source": "S01"
+    },
+    {
+      "subject": "Hezbollah",
+      "predicate": "aligned_with",
+      "object": "Iran",
+      "qualifier": "axis-of-resistance network",
+      "source": "S08"
+    },
+    {
+      "subject": "Houthis",
+      "predicate": "threatened",
+      "object": "Israeli maritime navigation in Red Sea",
+      "qualifier": "2026-06-08",
+      "source": "S11"
+    },
+    {
+      "subject": "OCHA Gaza report 2026-06-05",
+      "predicate": "reported",
+      "object": "936 fatalities and 2,903 injuries since 2025-10-10 ceasefire per Gaza MoH",
+      "qualifier": "as of 2026-06-03",
+      "source": "S05"
+    },
+    {
+      "subject": "Lebanon defense minister",
+      "predicate": "reported",
+      "object": "3,491 Israeli airstrikes from 2026-04-17 to 2026-06-07",
+      "qualifier": "during U.S.-brokered ceasefire period",
+      "source": "S08"
+    }
+  ]
+}
