@@ -35,22 +35,6 @@ export default defineNuxtPlugin((nuxtApp) => {
         rounded: 'sm',
         elevation: 0,
       },
-      VTextField: {
-        density: 'comfortable',
-        variant: 'solo-filled',
-      },
-      VCombobox: {
-        density: 'comfortable',
-        variant: 'solo-filled',
-      },
-      VSelect: {
-        density: 'comfortable',
-        variant: 'solo-filled',
-      },
-      VFileInput: {
-        density: 'comfortable',
-        variant: 'solo-filled',
-      },
       VExpansionPanel: {
         rounded: 'sm',
       },
