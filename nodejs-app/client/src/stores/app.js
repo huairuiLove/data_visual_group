@@ -9,7 +9,7 @@ export const useAppStore = defineStore('app', () => {
   const fileProcessed = ref(false)
   const llmProvider = ref('openai-compatible')
   const baseURL = ref('http://localhost:1234/v1')
-  const modelName = ref('gpt-4o-mini')
+  const modelName = ref('qwen3-14b')
   const analysisMode = ref('single_detailed')
   const apiKey = ref('')
   const currentFile = ref('')

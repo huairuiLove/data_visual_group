@@ -5,13 +5,13 @@ const config = {
   neo4j: {
     url: process.env.NEO4J_URL || 'neo4j://localhost:7687',
     username: process.env.NEO4J_USERNAME || 'neo4j',
-    password: process.env.NEO4J_PASSWORD || 'password123',
+    password: process.env.NEO4J_PASSWORD || 'dev_password_change_me',
   },
 
   llm: {
     baseURL: process.env.LLM_BASE_URL || 'http://localhost:1234/v1',
     apiKey: process.env.LLM_API_KEY || '',
-    model: process.env.LLM_MODEL || 'gpt-4o-mini',
+    model: process.env.LLM_MODEL || 'qwen3-14b',
   },
 
   embeddings: {

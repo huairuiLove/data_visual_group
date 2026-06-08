@@ -17,7 +17,7 @@ function normalizeBaseURL(baseURL) {
 }
 
 function getModelName(_provider = 'openai-compatible', _role = 'chat') {
-  return config.llm?.model || 'gpt-4o-mini'
+  return config.llm?.model || 'qwen3-14b'
 }
 
 function buildChatParams(model, messages, options = {}) {

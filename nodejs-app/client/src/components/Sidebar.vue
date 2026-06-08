@@ -6,7 +6,7 @@ const store = useAppStore()
 
 // API Setup
 const llmBaseURL = ref('http://localhost:1234/v1')
-const modelName = ref('gpt-4o-mini')
+const modelName = ref('qwen3-14b')
 const analysisMode = ref('single_detailed')
 const apiKey = ref('')
 const embedType = ref('lmstudio')
@@ -19,7 +19,7 @@ const setupStatus = ref('')
 // Neo4j
 const neo4jUrl = ref('neo4j://localhost:7687')
 const neo4jUser = ref('neo4j')
-const neo4jPassword = ref('password123')
+const neo4jPassword = ref('dev_password_change_me')
 const neo4jStatus = ref('')
 
 // Upload
@@ -113,11 +113,12 @@ async function handleReanalyze() {
         <label>模型名称</label>
         <input v-model="modelName" list="llm-model-options" type="text" placeholder="选择或输入模型名称" />
         <datalist id="llm-model-options">
+          <option value="qwen3-14b">qwen3-14b (推荐本地别名)</option>
+          <option value="qwen3-8b">qwen3-8b (低内存备用)</option>
           <option value="gpt-4o-mini">gpt-4o-mini</option>
           <option value="gpt-4.1-mini">gpt-4.1-mini</option>
           <option value="qwen2.5-7b-instruct">qwen2.5-7b-instruct</option>
           <option value="llama-3.1-8b-instruct">llama-3.1-8b-instruct</option>
-          <option value="qwen3-8b">qwen3-8b</option>
         </datalist>
       </div>
       <div class="form-group">
