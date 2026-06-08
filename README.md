@@ -87,7 +87,7 @@ ollama serve &                       # 后台运行；模型需已 pull（见初
 
 # ── 3a. Node.js 版（推荐，需两个终端）────────────────────────
 # 终端 1：Express API
-cd /path/to/work_group
+cd /Users/miaohuairui/PyCharmMiscProject/data_visualization/work_group
 npm run dev                          # → http://localhost:3000
 
 # 终端 2：Vue 开发服（HMR，/api 自动代理到 3000）
