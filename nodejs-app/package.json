@@ -1,12 +1,12 @@
 {
-  "name": "datagraphx",
+  "name": "datagraphx-server",
   "version": "2.0.0",
   "description": "中东冲突态势智能分析台 - DataGraphX Node.js Edition",
   "main": "server.js",
   "scripts": {
     "start": "NODE_ENV=production node server.js",
     "dev": "node server.js",
-    "build": "npm --prefix client run build",
+    "build": "bun run --cwd client build",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{js,vue,css,json,md}\"",
     "test:notebook": "node scripts/test-e2e-notebook.js",
@@ -17,7 +17,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
     "mammoth": "^1.8.0",
-    "multer": "^1.4.5-lts.1",
+    "multer": "^2.1.1",
     "natural": "^8.0.1",
     "neo4j-driver": "^5.24.0",
     "node-fetch": "^2.7.0",

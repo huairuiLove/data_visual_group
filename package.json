@@ -2,9 +2,21 @@
   "name": "datagraphx",
   "version": "2.0.0",
   "private": true,
+  "packageManager": "bun@1.2.21",
+  "workspaces": [
+    "nodejs-app",
+    "nodejs-app/client"
+  ],
   "scripts": {
-    "build": "npm --prefix nodejs-app/client run build",
-    "dev": "npm run build && npm --prefix nodejs-app run dev",
-    "start": "npm --prefix nodejs-app start"
+    "build": "bun run --cwd nodejs-app/client build",
+    "dev": "bun run build && bun run --cwd nodejs-app dev",
+    "start": "bun run --cwd nodejs-app start",
+    "lint": "bun run --cwd nodejs-app lint",
+    "test:notebook": "bun run --cwd nodejs-app test:notebook",
+    "test:notebook:offline": "bun run --cwd nodejs-app test:notebook:offline",
+    "test:report": "bun run --cwd nodejs-app test:report"
+  },
+  "overrides": {
+    "uuid": "^11.1.0"
   }
 }

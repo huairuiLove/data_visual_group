@@ -10,12 +10,12 @@
 
 ### 快速对照
 
-| 服务 | 端口 | 启动 | 关闭 |
-|------|------|------|------|
-| Neo4j (Homebrew) | 7474 / 7687 | `neo4j start` | `neo4j stop` |
-| Neo4j (Docker) | 7474 / 7687 | `docker start neo4j` | `docker stop neo4j` |
-| LM Studio | 1234 | 在 LM Studio 中开启 Local Server | 关闭 LM Studio |
-| DataGraphX | 3000 | `npm run dev` 或 `npm start` | 终端 `Ctrl+C` |
+| 服务             | 端口        | 启动                             | 关闭                |
+| ---------------- | ----------- | -------------------------------- | ------------------- |
+| Neo4j (Homebrew) | 7474 / 7687 | `neo4j start`                    | `neo4j stop`        |
+| Neo4j (Docker)   | 7474 / 7687 | `docker start neo4j`             | `docker stop neo4j` |
+| LM Studio        | 1234        | 在 LM Studio 中开启 Local Server | 关闭 LM Studio      |
+| DataGraphX       | 3000        | `bun run dev` 或 `bun start`     | 终端 `Ctrl+C`       |
 
 > **启动顺序：** Neo4j → LM Studio（若用本地嵌入）→ DataGraphX
 
@@ -25,9 +25,8 @@
 
 ```bash
 # Node.js 依赖
+bun install
 cd nodejs-app
-npm install
-cd client && npm install && cd ..
 cp .env.example .env    # 填入 API Key / Neo4j 密码
 cd ..
 
@@ -39,7 +38,7 @@ neo4j start
 # LM Studio：加载 embedding 模型，开启 Local Server（默认 http://localhost:1234/v1）
 ```
 
-> 若不想使用本地嵌入，可在侧边栏选择 **OpenAI** 嵌入（需配置 `OPENAI_API_KEY`）。
+> 若不想使用本地嵌入，可在侧边栏选择 **OpenAI** 嵌入，复用 API 设置里的 OpenAI-compatible Base URL 和 API Key。
 
 ---
 
@@ -47,20 +46,20 @@ neo4j start
 
 ```bash
 # 开发（自动 build 前端 + 启动，访问 http://localhost:3000）
-npm run dev
+bun run dev
 
 # 生产（需先 build）
-npm run build
-npm start
+bun run build
+bun start
 ```
 
-前端改动后重新执行 `npm run build`（或再次 `npm run dev`）。
+前端改动后重新执行 `bun run build`（或再次 `bun run dev`）。
 
 ---
 
 ### 三、使用流程
 
-1. **配置 API** — 侧边栏选择 DeepSeek 或 OpenAI，输入 API Key，点击测试
+1. **配置 API** — 侧边栏填写 OpenAI-compatible Base URL、模型名称和 API Key（本地服务可留空），点击测试
 2. **配置嵌入模型** — 选择「本地 (LM Studio)」或 OpenAI；LM Studio 填 API URL（默认 `http://localhost:1234/v1`）和模型名
 3. **连接 Neo4j** — 地址 `neo4j://localhost:7687`、用户名、密码，点击连接
 4. **上传 PDF 文献** — 选择军事/国际局势主题 PDF 上传
@@ -89,9 +88,9 @@ work_group/
 
 LM Studio 提供 OpenAI 兼容的 `/v1/embeddings` 接口，与 llama.cpp server 用法相同：
 
-| 配置项 | 默认值 | 说明 |
-|--------|--------|------|
-| LM Studio API URL | `http://localhost:1234/v1` | Local Server 地址 |
-| 嵌入模型名称 | 与 LM Studio 中加载的模型一致 | 如 `text-embedding-nomic-embed-text-v1.5` |
+| 配置项            | 默认值                        | 说明                                      |
+| ----------------- | ----------------------------- | ----------------------------------------- |
+| LM Studio API URL | `http://localhost:1234/v1`    | Local Server 地址                         |
+| 嵌入模型名称      | 与 LM Studio 中加载的模型一致 | 如 `text-embedding-nomic-embed-text-v1.5` |
 
 侧边栏「确认设置」会将嵌入配置写入 `nodejs-app/.env`。
