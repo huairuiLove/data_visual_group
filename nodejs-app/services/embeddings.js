@@ -3,8 +3,8 @@ const config = require('../config');
 
 class LocalEmbeddings {
   constructor(baseURL, model) {
-    this.baseURL = baseURL || config.embeddings.local.baseURL;
-    this.model = model || config.embeddings.local.model;
+    this.baseURL = baseURL || config.embeddings.lmstudio.baseURL;
+    this.model = model || config.embeddings.lmstudio.model;
   }
 
   async embedQuery(text) {
@@ -13,6 +13,10 @@ class LocalEmbeddings {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ input: text, model: this.model }),
     });
+    if (!resp.ok) {
+      const body = await resp.text();
+      throw new Error(`Embedding request failed (${resp.status}): ${body.slice(0, 200)}`);
+    }
     const json = await resp.json();
     return json.data[0].embedding;
   }
@@ -28,6 +32,10 @@ class LocalEmbeddings {
 
 let embeddingsInstance = null;
 
+function resetEmbeddings() {
+  embeddingsInstance = null;
+}
+
 function getEmbeddings() {
   if (!embeddingsInstance) {
     embeddingsInstance = new LocalEmbeddings();
@@ -38,11 +46,13 @@ function getEmbeddings() {
 async function testEmbeddings(type, options = {}) {
   try {
     let result;
-    if (type === 'local' || type === '本地') {
-      const emb = new LocalEmbeddings(options.baseURL, options.model);
+    if (type === 'lmstudio' || type === 'local' || type === '本地') {
+      const emb = new LocalEmbeddings(
+        options.baseURL || config.embeddings.lmstudio.baseURL,
+        options.model || config.embeddings.lmstudio.model,
+      );
       result = await emb.embedQuery('test');
     } else {
-      // OpenAI embeddings
       const OpenAI = require('openai');
       const client = new OpenAI({
         apiKey: options.apiKey,
@@ -60,4 +70,4 @@ async function testEmbeddings(type, options = {}) {
   }
 }
 
-module.exports = { LocalEmbeddings, getEmbeddings, testEmbeddings };
+module.exports = { LocalEmbeddings, getEmbeddings, resetEmbeddings, testEmbeddings };

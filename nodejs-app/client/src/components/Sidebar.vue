@@ -9,9 +9,9 @@ const provider = ref('deepseek')
 const modelName = ref('deepseek-v4-flash')
 const analysisMode = ref('single_detailed')
 const apiKey = ref('')
-const embedType = ref('local')
-const embedUrl = ref('http://localhost:11434/v1')
-const embedModelName = ref('nomic-embed-text')
+const embedType = ref('lmstudio')
+const embedUrl = ref('http://localhost:1234/v1')
+const embedModelName = ref('text-embedding-nomic-embed-text-v1.5')
 const testLlmStatus = ref('')
 const testEmbedStatus = ref('')
 const setupStatus = ref('')
@@ -38,14 +38,23 @@ async function handleTestLLM() {
 async function handleTestEmbed() {
   const res = await store.testEmbeddings(
     embedType.value,
-    embedType.value === 'local' ? { baseURL: embedUrl.value, model: embedModelName.value } : { apiKey: apiKey.value }
+    embedType.value === 'lmstudio' ? { baseURL: embedUrl.value, model: embedModelName.value } : { apiKey: apiKey.value }
   )
   testEmbedStatus.value = res.success ? `Success: ${res.message}` : `Failed: ${res.message}`
 }
 
 async function handleConfirmSetup() {
   const res = await store.confirmSetup(provider.value, modelName.value, apiKey.value)
-  setupStatus.value = res.success ? 'API 设置已保存到本地 .env' : `Failed: ${res.message}`
+  if (!res.success) {
+    setupStatus.value = `Failed: ${res.message}`
+    return
+  }
+  const embedRes = await store.confirmEmbeddings(
+    embedType.value,
+    embedType.value === 'lmstudio' ? embedUrl.value : '',
+    embedType.value === 'lmstudio' ? embedModelName.value : '',
+  )
+  setupStatus.value = embedRes.success ? 'API 与嵌入设置已保存' : `LLM 已保存，嵌入失败: ${embedRes.message}`
 }
 
 async function handleConnectNeo4j() {
@@ -116,19 +125,20 @@ async function handleReanalyze() {
       <div class="form-group">
         <label>嵌入来源</label>
         <select v-model="embedType">
-          <option value="local">本地 (Ollama)</option>
+          <option value="lmstudio">本地 (LM Studio)</option>
           <option value="openai">OpenAI</option>
         </select>
       </div>
-      <template v-if="embedType === 'local'">
+      <template v-if="embedType === 'lmstudio'">
         <div class="form-group">
-          <label>API URL</label>
-          <input v-model="embedUrl" type="text">
+          <label>LM Studio API URL</label>
+          <input v-model="embedUrl" type="text" placeholder="http://localhost:1234/v1">
         </div>
         <div class="form-group">
-          <label>模型</label>
-          <input v-model="embedModelName" type="text">
+          <label>嵌入模型名称</label>
+          <input v-model="embedModelName" type="text" placeholder="与 LM Studio 中加载的模型名一致">
         </div>
+        <p class="hint-text">在 LM Studio 中加载 embedding 模型并开启 Local Server（默认端口 1234）</p>
       </template>
       <button class="btn btn-outline" @click="handleTestEmbed">测试嵌入模型</button>
       <div v-if="testEmbedStatus" class="status" :class="testEmbedStatus.startsWith('Success') ? 'success' : 'error'">

@@ -6,7 +6,7 @@ const fsp = fs.promises;
 
 const { runQuery } = require('../services/neo4j');
 const { chat, testConnection } = require('../services/llm');
-const { LocalEmbeddings, testEmbeddings } = require('../services/embeddings');
+const { LocalEmbeddings, resetEmbeddings, testEmbeddings } = require('../services/embeddings');
 const {
   processDocument, parseArticleMeta, generateFileHash, saveGraphData, loadGraphData,
 } = require('../services/document');
@@ -65,6 +65,37 @@ router.post('/test-embeddings', async (req, res) => {
   const { type, apiKey, baseURL, model } = req.body;
   const result = await testEmbeddings(type, { apiKey, baseURL, model });
   res.json(result);
+});
+
+// --- API: Persist embedding settings to local .env ---
+router.post('/settings/embeddings', async (req, res) => {
+  try {
+    const { type, baseURL, model } = req.body;
+    if (type === 'openai') {
+      res.json({ success: true, message: 'OpenAI 嵌入设置已确认（使用 LLM API Key）' });
+      return;
+    }
+
+    const updates = {};
+    if (baseURL) updates.LM_STUDIO_BASE_URL = String(baseURL).trim();
+    if (model) updates.LM_STUDIO_EMBED_MODEL = String(model).trim();
+
+    await updateEnvFile(updates);
+    config.setEmbeddingConfig({
+      ...(updates.LM_STUDIO_BASE_URL ? { baseURL: updates.LM_STUDIO_BASE_URL } : {}),
+      ...(updates.LM_STUDIO_EMBED_MODEL ? { model: updates.LM_STUDIO_EMBED_MODEL } : {}),
+    });
+    resetEmbeddings();
+
+    res.json({
+      success: true,
+      baseURL: config.embeddings.lmstudio.baseURL,
+      model: config.embeddings.lmstudio.model,
+      message: 'LM Studio 嵌入设置已保存到本地 .env',
+    });
+  } catch (e) {
+    sendError(res, e, 'Persist embedding settings error');
+  }
 });
 
 // --- API: Persist LLM settings to local .env ---

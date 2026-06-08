@@ -75,6 +75,14 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
+  async function confirmEmbeddings(type, baseURL, model) {
+    try {
+      return await api.post('/settings/embeddings', { type, baseURL, model })
+    } catch (e) {
+      return { success: false, message: e.message }
+    }
+  }
+
   async function uploadFile(file) {
     loading.value = true
     error.value = ''
@@ -171,7 +179,7 @@ export const useAppStore = defineStore('app', () => {
     stats, meta, entityData, keywordData, personData,
     timeline, spatialData, graphData, edges, insights, work1Metrics, isReady,
     testLLM, testEmbeddings, connectNeo4j,
-    confirmSetup, uploadFile, reanalyze, runMultiAnalysis,
+    confirmSetup, confirmEmbeddings, uploadFile, reanalyze, runMultiAnalysis,
     generateNotebook, finalizeResearchReport, listResearchReports, getResearchReport, askQuestion,
   }
 })

@@ -60,11 +60,25 @@ function parseArticleMeta(rawText) {
 
   const headerLines = headerEnd >= 0 ? lines.slice(0, headerEnd + 1) : lines.slice(0, Math.min(8, lines.length));
 
-  for (const line of headerLines) {
-    const m = line.match(/^(Title|Date|Source|Summary|标题|日期|来源|摘要)\s*[:：]\s*(.+)/i);
+  for (let i = 0; i < headerLines.length; i++) {
+    const line = headerLines[i].trim();
+    // Match both "Key: value" and "Key:" (empty value) patterns
+    const m = line.match(/^(Title|Date|Source|Summary|标题|日期|来源|摘要)\s*[:：]\s*(.+)/i)
+           || line.match(/^(Title|Date|Source|Summary|标题|日期|来源|摘要)\s*[:：]\s*$/i);
     if (m) {
       const key = m[1].toLowerCase();
-      const val = m[2].trim();
+      let val = (m[2] || '').trim();
+      // If value is empty, grab the next non-empty, non-header line
+      if (!val) {
+        let j = i + 1;
+        while (j < headerLines.length && !val) {
+          const next = headerLines[j].trim();
+          if (next && !/^(Title|Date|Source|Summary|Article|标题|日期|来源|摘要)\s*[:：]/i.test(next)) {
+            val = next;
+          }
+          j++;
+        }
+      }
       if (key === 'title' || key === '标题') meta.title = val;
       else if (key === 'date' || key === '日期') meta.date = val;
       else if (key === 'source' || key === '来源') meta.source = val;

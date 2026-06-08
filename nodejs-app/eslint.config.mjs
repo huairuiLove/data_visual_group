@@ -9,8 +9,6 @@ export default [
       'client/node_modules/**',
       'client/dist/**',
       'data/**',
-      'public/**',
-      'views/**',
     ],
   },
   js.configs.recommended,

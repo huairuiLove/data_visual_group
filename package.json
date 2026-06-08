@@ -3,10 +3,8 @@
   "version": "2.0.0",
   "private": true,
   "scripts": {
-    "dev": "npm --prefix nodejs-app run dev:all",
-    "dev:api": "npm --prefix nodejs-app run dev",
-    "dev:ui": "npm --prefix nodejs-app/client run dev",
     "build": "npm --prefix nodejs-app/client run build",
+    "dev": "npm run build && npm --prefix nodejs-app run dev",
     "start": "npm --prefix nodejs-app start"
   }
 }

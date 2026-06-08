@@ -24,9 +24,9 @@ const config = {
   },
 
   embeddings: {
-    local: {
-      baseURL: process.env.OLLAMA_BASE_URL || 'http://localhost:11434/v1',
-      model: process.env.OLLAMA_EMBED_MODEL || 'nomic-embed-text',
+    lmstudio: {
+      baseURL: process.env.LM_STUDIO_BASE_URL || 'http://localhost:1234/v1',
+      model: process.env.LM_STUDIO_EMBED_MODEL || 'text-embedding-nomic-embed-text-v1.5',
     },
   },
 
@@ -64,6 +64,13 @@ config.setLLMConfig = function setLLMConfig(provider, values) {
 
   config.llm[provider] = {
     ...config.llm[provider],
+    ...values,
+  };
+};
+
+config.setEmbeddingConfig = function setEmbeddingConfig(values) {
+  config.embeddings.lmstudio = {
+    ...config.embeddings.lmstudio,
     ...values,
   };
 };

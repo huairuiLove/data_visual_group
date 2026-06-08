@@ -6,7 +6,7 @@ const V4_MODELS = new Set(['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-cha
 function createLLMClient(provider = 'deepseek') {
   const cfg = config.llm[provider];
   if (!cfg || !cfg.apiKey) {
-    throw new Error(`LLM provider "${provider}" not configured. 请检查 Agent-main/.env 或 nodejs-app/.env 中的 DEEPSEEK_API_KEY`);
+    throw new Error(`LLM provider "${provider}" not configured. 请检查 nodejs-app/.env 中的 DEEPSEEK_API_KEY`);
   }
   return new OpenAI({
     apiKey: cfg.apiKey.trim(),
