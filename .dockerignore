@@ -1,0 +1,15 @@
+.git
+.idea
+.state
+node_modules
+nodejs-app/node_modules
+nodejs-app/client/node_modules
+nodejs-app/client/.nuxt
+nodejs-app/client/.output
+nodejs-app/client/dist
+nodejs-app/data
+models
+*.log
+.DS_Store
+.env
+nodejs-app/.env

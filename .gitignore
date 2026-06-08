@@ -20,6 +20,11 @@ __pycache__/
 # Archives
 *.zip
 
+# Local LLM model files
+models/*.gguf
+models/*.bin
+models/*.safetensors
+
 # Node.js
 node_modules/
 

@@ -123,6 +123,93 @@ bun run dev
 http://127.0.0.1:3001
 ```
 
+## Docker Compose 一键部署
+
+Compose 会启动三类服务：
+
+| 服务 | 说明 | 默认端口 |
+| ---- | ---- | -------- |
+| `datagraphx` | Bun + Nuxt/Nitro 应用，包含前端和 `/api/*` | `3001` |
+| `neo4j` | 图数据库 | `7474` / `7687` |
+| `llamacpp-llm` | llama.cpp OpenAI-compatible Chat API | `1234` |
+| `llamacpp-embedding` | llama.cpp OpenAI-compatible Embeddings API | `1235` |
+
+准备模型目录：
+
+```bash
+mkdir -p models
+```
+
+把 GGUF 模型放进去，默认文件名为：
+
+```text
+models/Qwen3-14B-Q4_K_M.gguf
+models/nomic-embed-text-v1.5.Q4_K_M.gguf
+```
+
+如果你的文件名不同，复制配置示例并修改：
+
+```bash
+cp .env.docker.example .env
+```
+
+常用修改项：
+
+```env
+LLAMACPP_LLM_MODEL=Qwen3-14B-Q4_K_M.gguf
+LLM_MODEL_NAME=qwen3-14b
+
+LLAMACPP_EMBED_MODEL=nomic-embed-text-v1.5.Q4_K_M.gguf
+EMBED_MODEL_NAME=text-embedding-nomic-embed-text-v1.5
+
+NEO4J_PASSWORD=dev_password_change_me
+```
+
+启动：
+
+```bash
+docker compose up -d --build
+```
+
+查看日志：
+
+```bash
+docker compose logs -f datagraphx
+docker compose logs -f llamacpp-llm
+docker compose logs -f llamacpp-embedding
+```
+
+停止：
+
+```bash
+docker compose down
+```
+
+连同 Neo4j 数据卷一起删除：
+
+```bash
+docker compose down -v
+```
+
+容器内服务互联配置已经写在 `docker-compose.yml`：
+
+```env
+NEO4J_URL=neo4j://neo4j:7687
+LLM_BASE_URL=http://llamacpp-llm:8080/v1
+LM_STUDIO_BASE_URL=http://llamacpp-embedding:8080/v1
+```
+
+浏览器仍然访问宿主机端口：
+
+```text
+DataGraphX: http://127.0.0.1:3001
+Neo4j Browser: http://127.0.0.1:7474
+LLM API: http://127.0.0.1:1234/v1
+Embedding API: http://127.0.0.1:1235/v1
+```
+
+Apple Silicon 上 Docker GPU 加速能力有限，llama.cpp 容器可能主要走 CPU。需要最佳 Metal 性能时，建议 Neo4j 和 DataGraphX 用 Docker，LLM/Embedding 继续在宿主机用 LM Studio 或本地 llama.cpp 跑，然后把 `.env` 里的 Base URL 指向宿主机服务。
+
 ## 常用脚本
 
 | 命令 | 说明 |
