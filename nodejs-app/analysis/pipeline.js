@@ -84,14 +84,48 @@ function categorizeEvent(text) {
   return cats.length ? cats : ["其他"];
 }
 
+const STOP_WORDS = new Set([
+  // English
+  'the','a','an','is','are','was','were','be','been','being','have','has','had',
+  'having','do','does','did','doing','will','would','shall','should','can','could',
+  'may','might','must','ought','i','me','my','we','our','you','your','he','she',
+  'it','they','them','their','his','her','its','and','or','but','not','no','nor',
+  'so','if','then','than','that','this','these','those','to','of','in','for','on',
+  'with','at','by','from','as','into','through','during','before','after','above',
+  'below','between','out','off','over','under','again','further','once','here',
+  'there','when','where','why','how','all','both','each','every','few','more',
+  'most','other','some','such','only','own','same','up','down','just','about',
+  'now','also','very','too','well','back','still','even','said','reuters','ap',
+  'will','new','one','two','like','get','make','made','much','many','know','see',
+  'year','time','people','day','way','work','part','world','country','city','man',
+  'week','month','say','take','come','go','use','look','first','last','long',
+  'according','including','although','because','since','while','after','before',
+  'monday','tuesday','wednesday','thursday','friday','saturday','sunday',
+  'january','february','march','april','june','july','august','september',
+  'october','november','december','news','report','reported','told',
+  // Chinese
+  '的','了','在','是','我','有','和','就','不','人','都','一','一个','上','也',
+  '很','到','说','要','去','你','会','着','没有','看','好','自己','这','他','她',
+  '它','们','那','些','什么','怎么','如何','因为','所以','但是','如果','虽然',
+  '可以','可能','应该','已经','正在','将','还','又','再','能','被','把','让',
+  '从','对','向','与','或','而','且','并','中','等','其','之','等','年','月','日',
+  '时','分','秒','今天','昨天','明天','现在','之前','之后','以后','以前','然后',
+  '这个','那个','哪','吗','呢','吧','啊','哦','嗯','呀','哈','并','及','以及',
+  '进行','通过','根据','按照','关于','对于','由于','为了','作为','表示','称',
+  '报道','新闻','消息','记者','据悉','据','指出','认为','显示','发生','出现',
+  '其中','以及','包括','目前','相关','方面','情况','问题','工作','需要','继续',
+  '开始','结束','发展','影响','作用','关系','不同','主要','重要','特别','非常',
+  '比较','更加','越来越','可能','一定','必须','能够','可以','应当','不得','不能',
+]);
+
 function extractKeywords(docs, topN = 30) {
-  // Simple TF-based keyword extraction
   const allWords = [];
   const catCounts = {};
 
   for (const doc of docs) {
     const text = typeof doc === 'string' ? doc : (doc.text || doc.page_content || '');
-    const tokens = tokenizer.tokenize(text.toLowerCase()).filter(t => t.length >= 2);
+    const tokens = tokenizer.tokenize(text.toLowerCase())
+      .filter(t => t.length >= 2 && !STOP_WORDS.has(t));
     allWords.push(...tokens);
 
     const cats = categorizeEvent(text);
@@ -107,16 +141,19 @@ function extractKeywords(docs, topN = 30) {
   }
 
   const keywords = [];
-  tf.listTerms(0 /* first doc */).slice(0, topN).forEach(item => {
-    keywords.push({ term: item.term, score: Math.round(item.tfidf * 10000) / 10000 });
+  tf.listTerms(0).forEach(item => {
+    if (item.term.length >= 2 && !STOP_WORDS.has(item.term)) {
+      keywords.push({ term: item.term, score: Math.round(item.tfidf * 10000) / 10000 });
+    }
   });
+  const filtered = keywords.slice(0, topN);
 
   // Sort catCounts
   const sortedCats = Object.entries(catCounts)
     .sort((a, b) => b[1] - a[1])
     .reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {});
 
-  return { keywords, categoryDistribution: sortedCats };
+  return { keywords: filtered, categoryDistribution: sortedCats };
 }
 
 // --- 时间线提取 ---

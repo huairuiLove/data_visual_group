@@ -58,14 +58,39 @@ function computeEntityCooccurrence(entities, relations) {
     .slice(0, 50);
 }
 
+const STOP_WORDS = new Set([
+  'the','a','an','is','are','was','were','be','been','being','have','has','had',
+  'having','do','does','did','doing','will','would','shall','should','can','could',
+  'may','might','must','i','me','my','we','our','you','your','he','she','it',
+  'they','them','their','his','her','its','and','or','but','not','no','nor',
+  'so','if','then','than','that','this','these','those','to','of','in','for',
+  'on','with','at','by','from','as','into','through','during','before','after',
+  'above','below','between','out','off','over','under','again','further',
+  'once','here','there','when','where','why','how','all','both','each','every',
+  'few','more','most','other','some','such','only','own','same','up','down',
+  'just','about','now','also','very','too','well','back','still','even','said',
+  'reuters','ap','news','report','reported','told','new','one','two','like',
+  'get','make','year','time','people','day','way',
+  '的','了','在','是','我','有','和','就','不','人','都','一','上','也','很',
+  '到','说','要','去','你','会','着','没有','看','好','自己','这','他','她',
+  '它','们','那','些','什么','怎么','如何','因为','所以','但是','如果','虽然',
+  '可以','可能','应该','已经','正在','将','还','又','再','能','被','把','让',
+  '从','对','向','与','或','而','且','并','中','等','其','之','年','月','日',
+  '进行','通过','根据','按照','关于','对于','由于','为了','作为','表示','称',
+  '报道','新闻','消息','记者','据悉','据','指出','认为','显示','其中','包括',
+  '目前','相关','方面','情况','问题','需要','继续','开始','结束','发展','影响',
+  '主要','重要','特别','非常','可能','一定','必须','能够','可以','已经',
+]);
+
 function computeKeywordCooccurrence(docs, topN = 20) {
   const wordFreq = {};
   const cooccur = {};
 
   for (const doc of docs) {
     const text = typeof doc === 'string' ? doc : (doc.text || '');
-    const words = text.match(/[\u4e00-\u9fa5]{2,}|[a-zA-Z]{3,}/g) || [];
-    const unique = [...new Set(words.map(w => w.toLowerCase()))];
+    const rawWords = text.match(/[\u4e00-\u9fa5]{2,}|[a-zA-Z]{3,}/g) || [];
+    const words = rawWords.map(w => w.toLowerCase()).filter(w => !STOP_WORDS.has(w));
+    const unique = [...new Set(words)];
     for (const w of unique) {
       wordFreq[w] = (wordFreq[w] || 0) + 1;
     }
@@ -118,11 +143,20 @@ function computeWork1Metrics({ entities = [], relations = [], docs = [] }) {
   const relationTypeDist = {};
   const entityFreq = {};
 
+  // Count entity frequencies from relations (how many times each entity appears)
+  for (const r of relations) {
+    const src = r.source || r.source_id || '';
+    const tgt = r.target || r.target_id || '';
+    if (src) entityFreq[src] = (entityFreq[src] || 0) + 1;
+    if (tgt) entityFreq[tgt] = (entityFreq[tgt] || 0) + 1;
+  }
+
   for (const e of entities) {
     const t = e.type || '未知';
-    entityTypeDist[t] = (entityTypeDist[t] || 0) + (e.count || 1);
+    entityTypeDist[t] = (entityTypeDist[t] || 0) + 1;
     const name = e.name || e.id;
-    entityFreq[name] = (entityFreq[name] || 0) + (e.count || 1);
+    // Ensure every entity appears at least once; prefer relation-degree count
+    if (!entityFreq[name]) entityFreq[name] = entityFreq[name] || 1;
   }
 
   for (const r of relations) {

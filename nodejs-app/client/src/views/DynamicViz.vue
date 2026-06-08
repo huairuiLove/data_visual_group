@@ -187,6 +187,6 @@ onUnmounted(() => { stopAnimation(); stopDynamic() })
 .sub-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 .play-btn { margin-left: auto; color: var(--accent); }
 .chart { background: var(--bg-card); border-radius: 8px; min-height: 300px; }
-.chart-tall { min-height: 620px; }
+.chart-tall { height: 620px; }
 .empty { display: flex; align-items: center; justify-content: center; height: 300px; color: var(--text-muted); }
 </style>

@@ -269,7 +269,7 @@ watch(vizMode, updateViz)
 .view-title { font-size: 1.4rem; margin-bottom: 1rem; color: var(--accent); }
 .kpi-row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin: 1rem 0; }
 .chart { background: var(--bg-card); border-radius: 8px; min-height: 300px; }
-.chart-tall { min-height: 650px; }
+.chart-tall { height: 650px; }
 h4 { font-size: 0.95rem; margin: 0.8rem 0 0.4rem; }
 hr { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
 .form-group { margin-bottom: 0.8rem; }
