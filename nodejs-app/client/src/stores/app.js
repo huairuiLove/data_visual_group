@@ -34,6 +34,13 @@ export const useAppStore = defineStore('app', () => {
   const isReady = computed(() => apiConfigured.value && neo4jConnected.value && fileProcessed.value)
 
   // Actions
+  async function loadSettings() {
+    const settings = await api.get('/settings')
+    if (settings.llm?.baseURL) baseURL.value = settings.llm.baseURL
+    if (settings.llm?.model) modelName.value = settings.llm.model
+    return settings
+  }
+
   async function testLLM(url, key, model) {
     try {
       const res = await api.post('/test-llm', { baseURL: url, apiKey: key, model })
@@ -198,6 +205,7 @@ export const useAppStore = defineStore('app', () => {
     insights,
     work1Metrics,
     isReady,
+    loadSettings,
     testLLM,
     testEmbeddings,
     connectNeo4j,

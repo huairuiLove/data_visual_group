@@ -82,6 +82,26 @@ const upload = multer({
 // In-memory state (would use Redis/DB in production)
 let appState = {}
 
+// --- API: Read runtime settings loaded from .env ---
+router.get('/settings', (_req, res) => {
+  res.json({
+    llm: {
+      baseURL: config.llm.baseURL,
+      model: config.llm.model,
+      hasApiKey: Boolean(config.llm.apiKey),
+    },
+    embeddings: {
+      type: 'lmstudio',
+      baseURL: config.embeddings.lmstudio.baseURL,
+      model: config.embeddings.lmstudio.model,
+    },
+    neo4j: {
+      url: config.neo4j.url,
+      username: config.neo4j.username,
+    },
+  })
+})
+
 // --- API: Test LLM connection ---
 router.post('/test-llm', async (req, res) => {
   const { baseURL, apiKey, model } = req.body

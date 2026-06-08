@@ -7,6 +7,10 @@ const config = require('../config');
 const CACHE_DIR = path.join(__dirname, '..', 'data', 'cache');
 const DATA_FILE = path.join(__dirname, '..', 'data', 'app_data.json');
 
+async function ensureCacheDir() {
+  await fs.mkdir(CACHE_DIR, { recursive: true });
+}
+
 async function loadFile(filePath) {
   const ext = path.extname(filePath).toLowerCase();
 
@@ -122,6 +126,7 @@ function generateFileHash(content) {
 }
 
 async function saveGraphData(hash, data) {
+  await ensureCacheDir();
   const filePath = path.join(CACHE_DIR, `${hash}_graph_data.json`);
   await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
 }

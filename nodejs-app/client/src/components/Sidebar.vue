@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useAppStore } from '../stores/app'
 
 const store = useAppStore()
@@ -74,6 +74,20 @@ async function handleUpload() {
 async function handleReanalyze() {
   await store.reanalyze()
 }
+
+onMounted(async () => {
+  try {
+    const settings = await store.loadSettings()
+    if (settings.llm?.baseURL) llmBaseURL.value = settings.llm.baseURL
+    if (settings.llm?.model) modelName.value = settings.llm.model
+    if (settings.embeddings?.baseURL) embedUrl.value = settings.embeddings.baseURL
+    if (settings.embeddings?.model) embedModelName.value = settings.embeddings.model
+    if (settings.neo4j?.url) neo4jUrl.value = settings.neo4j.url
+    if (settings.neo4j?.username) neo4jUser.value = settings.neo4j.username
+  } catch (e) {
+    setupStatus.value = `读取配置失败: ${e.message}`
+  }
+})
 </script>
 
 <template>
