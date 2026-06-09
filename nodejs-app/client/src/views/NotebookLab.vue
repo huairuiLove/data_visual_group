@@ -164,7 +164,7 @@ const hasSavedReport = computed(() => !!savedReport.value?.id)
     </p>
 
     <div v-if="!store.fileProcessed" class="empty">
-      <p>请先完成单文分析或多文联合分析。</p>
+      <p>请先在首页上传并完成分析。</p>
     </div>
 
     <template v-else>

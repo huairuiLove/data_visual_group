@@ -1,9 +1,8 @@
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { useAppStore } from '../stores/app'
 import { usePlotly, generateColors } from '../composables/usePlotly'
 import { useFisheye, useForceGraph } from '../composables/useFisheye'
-import { useDynamicGraph } from '../composables/useDynamicGraph'
 import KpiCard from '../components/KpiCard.vue'
 import { escapeHtml } from '../utils/html'
 
@@ -14,14 +13,13 @@ const selectedTypes = ref([])
 const standardChart = ref(null)
 const forceChart = ref(null)
 const fisheyeChart = ref(null)
-const dynamicChart = ref(null)
 const chart3d = ref(null)
 
-const { render: renderStandard } = usePlotly(standardChart, { layout: { height: 620 } })
-const { render: render3d } = usePlotly(chart3d, { layout: { height: 650, margin: { l: 0, r: 0, t: 0, b: 0 } } })
+const graphHeight = 780
+const { render: renderStandard } = usePlotly(standardChart, { layout: { height: graphHeight } })
+const { render: render3d } = usePlotly(chart3d, { layout: { height: graphHeight, margin: { l: 0, r: 0, t: 0, b: 0 } } })
 const { render: renderFisheye } = useFisheye(fisheyeChart)
 const { render: renderForce } = useForceGraph(forceChart)
-const { render2DDynamic, stop: stopDynamic } = useDynamicGraph()
 
 const allTypes = computed(() => {
   const types = {}
@@ -47,6 +45,21 @@ const nodeTypes = computed(() => {
 function endpointId(value) {
   if (value && typeof value === 'object') return String(value.id ?? value.name ?? value.text ?? '')
   return String(value ?? '')
+}
+
+function displayText(value) {
+  if (Array.isArray(value)) return value.map(displayText).filter(Boolean).join(' ')
+  if (value && typeof value === 'object') return String(value.label ?? value.name ?? value.id ?? value.text ?? '')
+  return String(value ?? '')
+}
+
+function axisRange(values) {
+  const nums = values.filter((v) => Number.isFinite(v))
+  if (!nums.length) return [-1, 1]
+  const min = Math.min(...nums)
+  const max = Math.max(...nums)
+  const pad = Math.max((max - min) * 0.12, 0.5)
+  return [min - pad, max + pad]
 }
 
 function renderStandardGraph() {
@@ -147,13 +160,15 @@ function render3dGraph() {
   const positions = {}
   const nodeList = nodes.map((n, i) => {
     const id = String(n.id || '')
+    const nodeType = displayText(n.type) || 'Unknown'
     const deg = degrees[id] || 1
     // Try semantic matching
-    const semPt = landscape?.points?.find(p =>
-      (p.label || '').includes(n.type) || (p.label || '').includes(id.slice(0, 4))
-    )
+    const semPt = landscape?.points?.find((p) => {
+      const label = displayText(p.label)
+      return label.includes(nodeType) || label.includes(id.slice(0, 4))
+    })
     return {
-      id, type: n.type, text: n.text || id, deg,
+      id, type: nodeType, text: displayText(n.text) || id, deg,
       x: semPt ? semPt.x * 3 : Math.cos((i / nodes.length) * Math.PI * 2) * (1 + Math.sin(i * 0.5) * 0.3),
       y: semPt ? semPt.y * 3 : Math.sin((i / nodes.length) * Math.PI * 2) * (1 + Math.cos(i * 0.5) * 0.3),
       z: deg * 0.5,
@@ -192,12 +207,18 @@ function render3dGraph() {
     })
   })
 
+  const xRange = axisRange(nodeList.map(n => n.x))
+  const yRange = axisRange(nodeList.map(n => n.y))
+  const zRange = axisRange(nodeList.map(n => n.z))
+
   render3d(traces, {
     title: landscape?.points?.length ? '3D 语义空间 (X/Y=语义, Z=重要度)' : '3D 实体空间 (Z轴=关联度)',
+    uirevision: 'knowledge-graph-3d',
     scene: {
-      xaxis: { showticklabels: false, showgrid: true, gridcolor: 'rgba(255,255,255,0.05)' },
-      yaxis: { showticklabels: false, showgrid: true, gridcolor: 'rgba(255,255,255,0.05)' },
-      zaxis: { showticklabels: false, showgrid: true, gridcolor: 'rgba(255,255,255,0.05)' },
+      aspectmode: 'cube',
+      xaxis: { range: xRange, showticklabels: false, showgrid: true, gridcolor: 'rgba(255,255,255,0.05)' },
+      yaxis: { range: yRange, showticklabels: false, showgrid: true, gridcolor: 'rgba(255,255,255,0.05)' },
+      zaxis: { range: zRange, showticklabels: false, showgrid: true, gridcolor: 'rgba(255,255,255,0.05)' },
       camera: { eye: { x: 1.8, y: 1.8, z: 1.2 } },
     },
     legend: { x: 0.01, y: 0.99, bgcolor: 'rgba(0,0,0,0.5)' },
@@ -205,22 +226,14 @@ function render3dGraph() {
 }
 
 function updateViz() {
-  nextTick(() => {
+  nextTick(() => requestAnimationFrame(() => {
     if (!filteredData.value.nodes.length) return
     if (vizMode.value === 'standard') renderStandardGraph()
     else if (vizMode.value === 'force') renderForce(filteredData.value.nodes, filteredData.value.links, nodeTypes.value)
     else if (vizMode.value === 'fisheye') renderFisheye(filteredData.value.nodes, filteredData.value.links, nodeTypes.value)
-    else if (vizMode.value === 'dynamic') {
-      stopDynamic()
-      if (dynamicChart.value) {
-        render2DDynamic(dynamicChart.value, filteredData.value.nodes, filteredData.value.links, { height: 620 })
-      }
-    }
     else if (vizMode.value === '3d') render3dGraph()
-  })
+  }))
 }
-
-onUnmounted(() => stopDynamic())
 
 function toggleType(type) {
   const idx = selectedTypes.value.indexOf(type)
@@ -277,18 +290,17 @@ onMounted(updateViz)
 
       <!-- Viz mode tabs -->
       <div class="sub-tabs">
-        <button v-for="mode in ['standard','force','fisheye','dynamic','3d']" :key="mode"
+        <button v-for="mode in ['standard','force','fisheye','3d']" :key="mode"
           class="sub-tab" :class="{ active: vizMode === mode }"
           @click="vizMode = mode">
-          {{ { standard: '标准视图', force: '力导向', fisheye: '鱼眼视图', dynamic: '2D动态', '3d': '三维视图' }[mode] }}
+          {{ { standard: '整体关系视图', force: '关系网络', fisheye: '鱼眼探索', '3d': '三维视图' }[mode] }}
         </button>
       </div>
 
-      <div ref="standardChart" class="chart" v-show="vizMode === 'standard'"/>
-      <div ref="forceChart" class="chart chart-tall" v-show="vizMode === 'force'"/>
-      <div ref="fisheyeChart" class="chart chart-tall" v-show="vizMode === 'fisheye'"/>
-      <div ref="dynamicChart" class="chart chart-tall" v-show="vizMode === 'dynamic'"/>
-      <div ref="chart3d" class="chart chart-tall" v-show="vizMode === '3d'"/>
+      <div ref="standardChart" class="chart chart-graph" v-show="vizMode === 'standard'"/>
+      <div ref="forceChart" class="chart chart-graph" v-show="vizMode === 'force'"/>
+      <div ref="fisheyeChart" class="chart chart-graph" v-show="vizMode === 'fisheye'"/>
+      <div ref="chart3d" class="chart chart-graph" v-show="vizMode === '3d'"/>
 
       <details>
         <summary>查看所有节点详情</summary>
@@ -311,8 +323,8 @@ onMounted(updateViz)
 .view { max-width: 1400px; }
 .view-title { font-size: 1.4rem; margin-bottom: 1rem; color: var(--accent); }
 .kpi-row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin: 1rem 0; }
-.chart { background: var(--bg-card); border-radius: 8px; min-height: 300px; }
-.chart-tall { height: 650px; }
+.chart { background: var(--bg-card); border-radius: 8px; min-height: 300px; overflow: hidden; }
+.chart-graph { height: 780px; min-height: 780px; }
 h4 { font-size: 0.95rem; margin: 0.8rem 0 0.4rem; }
 hr { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
 .form-group { margin-bottom: 0.8rem; }

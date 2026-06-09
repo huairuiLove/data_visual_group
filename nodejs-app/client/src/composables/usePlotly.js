@@ -15,6 +15,15 @@ function loadPlotly() {
 export function usePlotly(elRef, options = {}) {
   const plotReady = ref(false)
 
+  function isDisplayed(el) {
+    return Boolean(el && el.isConnected && el.offsetParent !== null && el.clientWidth > 0 && el.clientHeight > 0)
+  }
+
+  function resizePlot(Plotly, el) {
+    if (!isDisplayed(el)) return Promise.resolve()
+    return Plotly.Plots.resize(el).catch(() => {})
+  }
+
   function render(data, layout = {}) {
     const el = elRef.value
     if (!el) return
@@ -35,7 +44,7 @@ export function usePlotly(elRef, options = {}) {
         displayModeBar: false,
       }).then(() => {
         plotReady.value = true
-        return Plotly.Plots.resize(el)
+        return resizePlot(Plotly, el)
       })
     })
   }
@@ -43,7 +52,7 @@ export function usePlotly(elRef, options = {}) {
   function resize() {
     const el = elRef.value
     if (el) {
-      loadPlotly().then((Plotly) => Plotly.Plots.resize(el))
+      loadPlotly().then((Plotly) => resizePlot(Plotly, el))
     }
   }
 

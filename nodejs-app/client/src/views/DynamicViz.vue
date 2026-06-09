@@ -9,169 +9,287 @@ import { escapeHtml } from '../utils/html'
 const store = useAppStore()
 const { render2DDynamic, stop: stopDynamic } = useDynamicGraph()
 
-const mode = ref('network2d')
+const mode = ref('trend')
 const networkContainer = ref(null)
 const timelineChart = ref(null)
-const chart3dDynamic = ref(null)
+const flowChart = ref(null)
 const animFrame = ref(0)
 const isPlaying = ref(true)
 let animTimer = null
 let timelineFrameCount = 1
 
 const { render: renderTimeline } = usePlotly(timelineChart, { layout: { height: 400 } })
-const { render: render3d } = usePlotly(chart3dDynamic, { layout: { height: 650, margin: { l: 0, r: 0, t: 40, b: 0 } } })
+const { render: renderFlow } = usePlotly(flowChart, { layout: { height: 520 } })
 
 const metrics = computed(() => store.analysisResult?.work1Metrics || {})
+const entityTypeById = computed(() => {
+  const map = new Map()
+  for (const node of store.graphData.nodes || []) {
+    const id = endpointId(node.id || node.name)
+    if (id) map.set(id, displayText(node.type) || '未分类实体')
+  }
+  for (const entity of store.analysisResult?.entities || []) {
+    const id = endpointId(entity.id || entity.name)
+    if (id) map.set(id, displayText(entity.type) || map.get(id) || '未分类实体')
+  }
+  return map
+})
+
+const graphNodeIds = computed(() => new Set((store.graphData.nodes || []).map((node) => endpointId(node.id))))
+
+function cleanType(type) {
+  const text = displayText(type).trim()
+  if (!text || text.toLowerCase() === 'unknown' || text === 'UNKNOWN') return '未分类实体'
+  return text
+}
+
+function relationEndpoint(rel, side) {
+  const raw = side === 'source'
+    ? rel.source ?? rel.source_id ?? rel.from
+    : rel.target ?? rel.target_id ?? rel.to
+  return endpointId(raw)
+}
+
+function relationType(rel) {
+  const text = displayText(rel.type ?? rel.relation ?? rel.relationType ?? rel.label)
+  return text && text !== 'UNKNOWN' ? text : '关系'
+}
+
+const normalizedRelations = computed(() => {
+  const rawRelations =
+    store.analysisResult?.relations?.length
+      ? store.analysisResult.relations
+      : store.edges?.length
+        ? store.edges
+        : store.graphData.links || []
+
+  const nodeIds = graphNodeIds.value
+  return rawRelations
+    .map((rel, index) => {
+      const source = relationEndpoint(rel, 'source')
+      const target = relationEndpoint(rel, 'target')
+      const sourceType = cleanType(rel.source_type || entityTypeById.value.get(source))
+      const targetType = cleanType(rel.target_type || entityTypeById.value.get(target))
+      return {
+        source,
+        target,
+        type: relationType(rel),
+        sourceType,
+        targetType,
+        count: Number(rel.count || rel.weight || 1),
+        step: index,
+        summary: displayText(rel.summary || rel.text || ''),
+      }
+    })
+    .filter((rel) => rel.source && rel.target && (!nodeIds.size || (nodeIds.has(rel.source) && nodeIds.has(rel.target))))
+    .map((rel, index) => ({ ...rel, step: index }))
+})
 
 function endpointId(value) {
   if (value && typeof value === 'object') return String(value.id ?? value.name ?? value.text ?? '')
   return String(value ?? '')
 }
 
-function timelineTriples() {
-  const triples = metrics.value.relationTriples || []
-  if (triples.length) return triples
+function displayText(value) {
+  if (Array.isArray(value)) return value.map(displayText).filter(Boolean).join(' ')
+  if (value && typeof value === 'object') return String(value.label ?? value.name ?? value.id ?? value.text ?? '')
+  return String(value ?? '')
+}
 
-  const grouped = new Map()
-  for (const link of store.graphData.links || []) {
-    const source = endpointId(link.source)
-    const target = endpointId(link.target)
-    const type = link.type || link.relation || '关系'
-    if (!source || !target) continue
-    const key = `${source}|||${type}|||${target}`
-    const item = grouped.get(key) || { source, target, type, count: 0 }
-    item.count += link.count || 1
-    grouped.set(key, item)
+function timelineTriples() {
+  const triples = (metrics.value.relationTriples || [])
+    .map((triple) => ({
+      source: relationEndpoint(triple, 'source'),
+      target: relationEndpoint(triple, 'target'),
+      type: relationType(triple),
+      count: Number(triple.count || 1),
+    }))
+    .filter((triple) => triple.source && triple.target)
+  if (triples.length) return triples
+  return normalizedRelations.value
+}
+
+function buildEvolutionRows() {
+  const days = (store.timeline || [])
+    .map((day) => ({
+      date: String(day.date || ''),
+      events: day.events || [],
+      count: day.count || day.events?.length || 0,
+      categories: day.categories || [],
+    }))
+    .filter((day) => day.date)
+    .sort((a, b) => a.date.localeCompare(b.date))
+
+  if (days.length) {
+    const rows = []
+    for (const day of days) {
+      const counts = {}
+      if (day.events.length) {
+        for (const event of day.events) {
+          const category = displayText(event.category || '其他') || '其他'
+          counts[category] = (counts[category] || 0) + 1
+        }
+      } else if (day.categories.length) {
+        for (const category of day.categories) counts[displayText(category) || '其他'] = Math.max(day.count, 1)
+      } else {
+        counts['事件'] = Math.max(day.count, 1)
+      }
+      Object.entries(counts).forEach(([category, count]) => rows.push({ date: day.date, category, count }))
+    }
+    return rows
   }
-  return [...grouped.values()].sort((a, b) => b.count - a.count)
+
+  const triples = timelineTriples().slice(0, 30)
+  return triples.map((triple, index) => ({
+    date: `结构阶段 ${index + 1}`,
+    category: displayText(triple.type) || '关系',
+    count: triple.count || 1,
+    label: `${displayText(triple.source).slice(0, 12)} → ${displayText(triple.target).slice(0, 12)}`,
+  }))
 }
 
 function renderNetwork2D() {
   stopDynamic()
   nextTick(() => {
     if (!networkContainer.value || !store.graphData.nodes.length) return
-    render2DDynamic(networkContainer.value, store.graphData.nodes, store.graphData.links, { height: 620 })
-  })
-}
-
-function renderTimelineAnim() {
-  const triples = timelineTriples()
-  if (!triples.length) return
-
-  const types = [...new Set(triples.map(t => t.type))]
-  const colors = generateColors(types.length)
-  timelineFrameCount = Math.max(types.length, 1)
-  const frameIndex = animFrame.value % timelineFrameCount
-  const activeTypes = new Set(types.slice(0, frameIndex + 1))
-  const filtered = triples
-    .filter(t => activeTypes.has(t.type))
-    .sort((a, b) => (b.count || 1) - (a.count || 1))
-    .slice(0, 16)
-
-  renderTimeline([{
-    type: 'bar',
-    x: filtered.map(t => `${String(t.source).slice(0, 10)}→${String(t.target).slice(0, 10)}`),
-    y: filtered.map(t => t.count || 1),
-    marker: { color: filtered.map(t => colors[types.indexOf(t.type)] || '#4a9eff') },
-    text: filtered.map(t => t.type),
-    hovertemplate: '%{x}<br>关系: %{text}<br>次数: %{y}<extra></extra>',
-  }], {
-    title: `关系三元组时序动画 (帧 ${frameIndex + 1}/${timelineFrameCount}: ${types[frameIndex] || '关系'})`,
-    xaxis: { tickangle: -45 },
-    yaxis: { rangemode: 'tozero' },
-    height: 400,
-  })
-}
-
-function render3DDynamic() {
-  const { nodes, links } = store.graphData
-  if (!nodes.length) return
-
-  // Use semantic landscape data if available for X/Y positions
-  const landscape = store.analysisResult?.semanticLandscape
-  const kdd = store.analysisResult?.kdd
-
-  const types = [...new Set(nodes.map(n => n.type))].sort()
-  const colors = generateColors(types.length)
-  const colorMap = {}
-  types.forEach((t, i) => { colorMap[t] = colors[i] })
-
-  // Compute node degrees (importance) from links
-  const degrees = {}
-  links.forEach(l => {
-    const s = endpointId(l.source), t = endpointId(l.target)
-    degrees[s] = (degrees[s] || 0) + 1; degrees[t] = (degrees[t] || 0) + 1
-  })
-
-  // Build positions: use semantic landscape if available, otherwise layout by type
-  const positions = {}
-  const nodeList = nodes.map((n, i) => {
-    const id = String(n.id || '')
-    // Try to match with semantic landscape point
-    const semPt = landscape?.points?.find(p =>
-      (p.label || '').includes(n.type) || (p.label || '').includes(id.slice(0, 4))
-    )
-    const degree = degrees[id] || 1
-    return {
-      id, type: n.type, text: n.text || id,
-      x: semPt ? semPt.x * 3 : (Math.cos((i / nodes.length) * Math.PI * 2) * (1 + (i % 3) * 0.3)),
-      y: semPt ? semPt.y * 3 : (Math.sin((i / nodes.length) * Math.PI * 2) * (1 + (i % 3) * 0.3)),
-      z: semPt ? degree * 0.6 : (Math.sin((i / nodes.length) * Math.PI * 4) * 0.8),
-      degree,
-      clusterLabel: kdd?.labels?.[Math.min(i, kdd.labels.length - 1)] ?? null,
-    }
-  })
-
-  nodeList.forEach(n => { positions[n.id] = n })
-
-  const ex = [], ey = [], ez = []
-  links.forEach(l => {
-    const s = positions[endpointId(l.source)], t = positions[endpointId(l.target)]
-    if (s && t) { ex.push(s.x, t.x, null); ey.push(s.y, t.y, null); ez.push(s.z, t.z, null) }
-  })
-
-  const traces = [{
-    type: 'scatter3d', x: ex, y: ey, z: ez, mode: 'lines',
-    line: { width: 0.6, color: '#666' }, hoverinfo: 'none', name: '关系',
-  }]
-
-  types.forEach(t => {
-    const tn = nodeList.filter(n => n.type === t)
-    if (!tn.length) return
-    traces.push({
-      type: 'scatter3d', mode: 'markers+text',
-      x: tn.map(n => n.x),
-      y: tn.map(n => n.y),
-      z: tn.map(n => n.z),
-      text: tn.map(n => (n.text || '').slice(0, 8)),
-      textposition: 'top center',
-      textfont: { size: 9, color: '#ccc' },
-      name: `${t} (${tn.length})`,
-      marker: {
-        size: tn.map(n => 5 + Math.log2(n.degree + 1) * 4),
-        color: colorMap[t],
-        opacity: 0.85,
-        line: { width: 0.5, color: '#fff' },
-      },
-      hovertext: tn.map(n => {
-        const cluster = n.clusterLabel !== null ? `<br>群集: ${n.clusterLabel}` : ''
-        return `<b>${escapeHtml((n.text||'').slice(0, 30))}</b><br>类型: ${escapeHtml(n.type)}<br>关联数: ${n.degree}${cluster}`
-      }),
-      hoverinfo: 'text',
+    const links = normalizedRelations.value.length ? normalizedRelations.value : store.graphData.links
+    render2DDynamic(networkContainer.value, store.graphData.nodes, links, {
+      height: 620,
+      relationSequence: links,
     })
   })
+}
 
-  const angle = animFrame.value * 0.03
-  render3d(traces, {
-    title: landscape?.points?.length
-      ? '3D 语义聚类空间 (X/Y=语义坐标, Z=实体重要度)'
-      : '3D 实体关系空间 (节点大小=关联度)',
-    scene: {
-      camera: { eye: { x: 2.5 * Math.cos(angle), y: 2.5 * Math.sin(angle), z: 1.2 } },
-      xaxis: { showticklabels: false, title: landscape ? '语义 X' : '' },
-      yaxis: { showticklabels: false, title: landscape ? '语义 Y' : '' },
-      zaxis: { showticklabels: false, title: '关联度' },
+function renderEvolutionTrend() {
+  const rows = buildEvolutionRows()
+  if (!rows.length) return
+
+  const dates = [...new Set(rows.map(r => r.date))]
+  const categories = [...new Set(rows.map(r => r.category))]
+    .sort((a, b) => rows.filter(r => r.category === b).reduce((s, r) => s + r.count, 0) - rows.filter(r => r.category === a).reduce((s, r) => s + r.count, 0))
+    .slice(0, 8)
+  const colors = generateColors(categories.length || 1)
+  timelineFrameCount = Math.max(dates.length, 1)
+  const frameIndex = animFrame.value % timelineFrameCount
+  const visibleDates = dates.slice(0, frameIndex + 1)
+  const visible = rows.filter(r => visibleDates.includes(r.date) && categories.includes(r.category))
+  const currentDate = visibleDates[visibleDates.length - 1]
+  const currentRows = visible.filter(r => r.date === currentDate)
+
+  const cumulativeByCategory = new Map()
+  const traces = categories.map((category, i) => ({
+    type: 'scatter',
+    mode: 'lines+markers',
+    name: category,
+    x: visibleDates,
+    y: visibleDates.map(date => {
+      const previous = cumulativeByCategory.get(category) || 0
+      const next = previous + visible.filter(r => r.date === date && r.category === category).reduce((s, r) => s + r.count, 0)
+      cumulativeByCategory.set(category, next)
+      return next
+    }),
+    stackgroup: 'trend',
+    line: { width: 1.8, color: colors[i] },
+    fillcolor: colors[i].replace('rgb(', 'rgba(').replace(')', ',0.28)'),
+    hovertemplate: `%{x}<br>${escapeHtml(category)}: %{y}<extra></extra>`,
+  }))
+
+  traces.push({
+    type: 'scatter',
+    mode: 'markers+text',
+    name: '当前阶段',
+    x: currentRows.map(() => currentDate),
+    y: currentRows.map(r => r.count),
+    text: currentRows.map(r => r.category),
+    textposition: 'top center',
+    marker: {
+      size: currentRows.map(r => 12 + Math.sqrt(r.count) * 10),
+      color: currentRows.map(r => colors[categories.indexOf(r.category)] || '#4a9eff'),
+      line: { width: 1, color: '#fff' },
+      opacity: 0.9,
     },
+    hovertemplate: '%{text}<br>当前事件量: %{y}<extra></extra>',
+    yaxis: 'y2',
+  })
+
+  renderTimeline(traces, {
+    title: dates[0]?.startsWith('结构阶段')
+      ? `关系结构累积变化 (${frameIndex + 1}/${timelineFrameCount})`
+      : `事件态势趋势 (${visibleDates[0]} 至 ${currentDate})`,
+    uirevision: 'dynamic-evolution',
+    xaxis: { title: '时间/阶段', tickangle: dates.length > 6 ? -35 : 0 },
+    yaxis: { title: '累计事件规模', rangemode: 'tozero' },
+    yaxis2: { title: '当前阶段事件量', overlaying: 'y', side: 'right', rangemode: 'tozero', showgrid: false },
+    hovermode: 'closest',
+    height: 460,
+    legend: { orientation: 'h', y: -0.22 },
+  })
+}
+
+function renderRelationFlow() {
+  const relations = normalizedRelations.value
+  if (!relations.length) return
+
+  const pairs = new Map()
+  for (const rel of relations) {
+    const sourceType = rel.sourceType || '未分类实体'
+    const targetType = rel.targetType || '未分类实体'
+    const relation = rel.type || '关系'
+    const key = `${sourceType}|||${relation}|||${targetType}`
+    pairs.set(key, (pairs.get(key) || 0) + (rel.count || 1))
+  }
+
+  const topPairs = [...pairs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 18)
+  const labels = []
+  const labelIndex = new Map()
+  function addLabel(label) {
+    if (!labelIndex.has(label)) {
+      labelIndex.set(label, labels.length)
+      labels.push(label)
+    }
+    return labelIndex.get(label)
+  }
+
+  const source = []
+  const target = []
+  const value = []
+  const hover = []
+  for (const [key, count] of topPairs) {
+    const [sourceType, relation, targetType] = key.split('|||')
+    const sourceIndex = addLabel(`源:${sourceType}`)
+    const relationIndex = addLabel(`关系:${relation}`)
+    const targetIndex = addLabel(`目标:${targetType}`)
+    source.push(sourceIndex)
+    target.push(relationIndex)
+    value.push(count)
+    hover.push(`${sourceType} -[${relation}]-> ${targetType}: ${count}`)
+    source.push(relationIndex)
+    target.push(targetIndex)
+    value.push(count)
+    hover.push(`${sourceType} -[${relation}]-> ${targetType}: ${count}`)
+  }
+
+  renderFlow([{
+    type: 'sankey',
+    arrangement: 'snap',
+    node: {
+      pad: 18,
+      thickness: 16,
+      label: labels,
+      color: generateColors(labels.length),
+      line: { color: 'rgba(255,255,255,0.25)', width: 0.5 },
+    },
+    link: {
+      source,
+      target,
+      value,
+      customdata: hover,
+      hovertemplate: '%{customdata}<extra></extra>',
+      color: 'rgba(74,158,255,0.24)',
+    },
+  }], {
+    title: '实体类型 → 关系 → 目标类型流向',
+    margin: { l: 10, r: 10, t: 45, b: 20 },
   })
 }
 
@@ -179,10 +297,9 @@ function startAnimation() {
   stopAnimation()
   if (!isPlaying.value) return
   animTimer = setInterval(() => {
-    animFrame.value = (animFrame.value + 1) % (mode.value === 'timeline2d' ? timelineFrameCount : 360)
-    if (mode.value === 'timeline2d') renderTimelineAnim()
-    else if (mode.value === '3d') render3DDynamic()
-  }, 200)
+    animFrame.value = (animFrame.value + 1) % timelineFrameCount
+    if (mode.value === 'trend') renderEvolutionTrend()
+  }, 900)
 }
 
 function stopAnimation() {
@@ -197,12 +314,12 @@ function togglePlay() {
 
 function updateViz() {
   stopAnimation()
-  animFrame.value = 0
-  nextTick(() => {
+    animFrame.value = 0
+  nextTick(() => requestAnimationFrame(() => {
     if (mode.value === 'network2d') renderNetwork2D()
-    else if (mode.value === 'timeline2d') { renderTimelineAnim(); startAnimation() }
-    else if (mode.value === '3d') { render3DDynamic(); startAnimation() }
-  })
+    else if (mode.value === 'trend') { renderEvolutionTrend(); startAnimation() }
+    else if (mode.value === 'flow') renderRelationFlow()
+  }))
 }
 
 watch(() => store.graphData, updateViz, { deep: true })
@@ -215,27 +332,28 @@ onUnmounted(() => { stopAnimation(); stopDynamic() })
   <div v-if="!store.fileProcessed" class="empty"><p>请先上传并处理文档。</p></div>
   <div v-else class="view">
     <h2 class="view-title">动态可视化</h2>
-    <p class="desc">2D 动态力导向网图、关系三元组时序动画、3D 旋转态势图谱。</p>
+    <p class="desc">展示事件趋势、关系流向和网络活跃结构。</p>
 
     <div class="kpi-row">
       <KpiCard label="节点" :value="store.graphData.nodes.length" />
-      <KpiCard label="关系" :value="store.graphData.links.length" />
-      <KpiCard label="共现对" :value="(metrics.cooccurrence || []).length" />
+      <KpiCard label="关系" :value="normalizedRelations.length || store.graphData.links.length" />
+      <KpiCard label="时间节点" :value="store.timeline.length" />
+      <KpiCard label="传导阶段" :value="normalizedRelations.length" />
     </div>
 
     <div class="sub-tabs">
-      <button v-for="m in ['network2d','timeline2d','3d']" :key="m"
+      <button v-for="m in ['trend','flow','network2d']" :key="m"
         class="sub-tab" :class="{ active: mode === m }" @click="mode = m">
-        {{ { network2d: '2D 动态网图', timeline2d: '2D 时序动画', '3d': '3D 动态图谱' }[m] }}
+        {{ { trend: '事件趋势', flow: '关系流向', network2d: '动态网络' }[m] }}
       </button>
-      <button v-if="mode !== 'network2d'" class="sub-tab play-btn" @click="togglePlay">
+      <button v-if="mode === 'trend'" class="sub-tab play-btn" @click="togglePlay">
         {{ isPlaying ? '⏸ 暂停' : '▶ 播放' }}
       </button>
     </div>
 
+    <div ref="timelineChart" class="chart chart-trend" v-show="mode === 'trend'"/>
+    <div ref="flowChart" class="chart" v-show="mode === 'flow'"/>
     <div ref="networkContainer" class="chart chart-tall" v-show="mode === 'network2d'"/>
-    <div ref="timelineChart" class="chart" v-show="mode === 'timeline2d'"/>
-    <div ref="chart3dDynamic" class="chart chart-tall" v-show="mode === '3d'"/>
   </div>
 </template>
 
@@ -248,7 +366,8 @@ onUnmounted(() => { stopAnimation(); stopDynamic() })
 .sub-tab { padding: 0.5rem 1rem; border: none; background: transparent; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; font-size: 0.85rem; }
 .sub-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 .play-btn { margin-left: auto; color: var(--accent); }
-.chart { background: var(--bg-card); border-radius: 8px; min-height: 300px; }
+.chart { position: relative; background: var(--bg-card); border-radius: 8px; min-height: 300px; overflow: hidden; }
+.chart-trend { min-height: 500px; }
 .chart-tall { height: 620px; }
 .empty { display: flex; align-items: center; justify-content: center; height: 300px; color: var(--text-muted); }
 </style>

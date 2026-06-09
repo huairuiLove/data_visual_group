@@ -23,6 +23,7 @@ export function useDynamicGraph() {
 
     const w = container.clientWidth || 800
     const h = options.height || 620
+    const relationSequence = options.relationSequence || links || []
 
     const types = [...new Set(nodes.map(n => n.type))].sort()
     const colors = generateColors(types.length)
@@ -35,6 +36,19 @@ export function useDynamicGraph() {
       .attr('height', h)
       .style('background', '#1a1a2e')
       .style('border-radius', '8px')
+
+    const defs = svg.append('defs')
+    defs.append('marker')
+      .attr('id', 'arrow-flow')
+      .attr('viewBox', '0 -5 10 10')
+      .attr('refX', 18)
+      .attr('refY', 0)
+      .attr('markerWidth', 6)
+      .attr('markerHeight', 6)
+      .attr('orient', 'auto')
+      .append('path')
+      .attr('d', 'M0,-5L10,0L0,5')
+      .attr('fill', '#8fd3ff')
 
     // Tooltip
     const tooltip = container.appendChild(document.createElement('div'))
@@ -57,12 +71,36 @@ export function useDynamicGraph() {
       color: colorMap[n.type] || '#888',
       r: 5 + Math.min(i % 6, 5),
       pulsePhase: Math.random() * Math.PI * 2,
+      firstStep: Infinity,
+      activeDegree: 0,
     }))
 
     const nodeIds = new Set(nodesData.map(n => n.id))
     const linksData = links
       .filter(l => nodeIds.has(String(l.source)) && nodeIds.has(String(l.target)))
-      .map(l => ({ source: String(l.source), target: String(l.target), type: l.type || '' }))
+      .map((l, index) => ({
+        source: String(l.source),
+        target: String(l.target),
+        type: l.type || l.relation || '',
+        count: l.count || 1,
+        step: Number.isFinite(l.step) ? l.step : index,
+      }))
+      .sort((a, b) => a.step - b.step)
+    const maxStep = Math.max(0, ...linksData.map((link) => link.step))
+
+    const firstStepByNode = new Map()
+    const degreeByNode = new Map()
+    for (const link of linksData) {
+      firstStepByNode.set(link.source, Math.min(firstStepByNode.get(link.source) ?? Infinity, link.step))
+      firstStepByNode.set(link.target, Math.min(firstStepByNode.get(link.target) ?? Infinity, link.step))
+      degreeByNode.set(link.source, (degreeByNode.get(link.source) || 0) + 1)
+      degreeByNode.set(link.target, (degreeByNode.get(link.target) || 0) + 1)
+    }
+    for (const node of nodesData) {
+      node.firstStep = firstStepByNode.get(node.id) ?? Infinity
+      node.activeDegree = degreeByNode.get(node.id) || 0
+      node.r = Math.max(node.r, 6 + Math.min(10, Math.sqrt(node.activeDegree) * 2.5))
+    }
 
     simulation = d3.forceSimulation(nodesData)
       .force('link', d3.forceLink(linksData).id(d => d.id).distance(80).strength(0.3))
@@ -84,6 +122,28 @@ export function useDynamicGraph() {
       .attr('stroke', '#555')
       .attr('stroke-opacity', 0.5)
       .attr('stroke-width', 1)
+      .attr('marker-end', 'url(#arrow-flow)')
+
+    const flowParticles = g.append('g')
+      .selectAll('circle')
+      .data(linksData.slice(0, 80))
+      .join('circle')
+      .attr('r', d => 2.5 + Math.min(3, Math.sqrt(d.count || 1)))
+      .attr('fill', '#f6d365')
+      .attr('opacity', 0)
+
+    const stageLabel = svg.append('text')
+      .attr('x', 18)
+      .attr('y', 28)
+      .attr('fill', '#dcefff')
+      .attr('font-size', 13)
+      .attr('font-weight', 700)
+
+    const stageHint = svg.append('text')
+      .attr('x', 18)
+      .attr('y', 48)
+      .attr('fill', '#94a3b8')
+      .attr('font-size', 11)
 
     const node = g.append('g')
       .selectAll('g')
@@ -149,9 +209,43 @@ export function useDynamicGraph() {
     function animate() {
       frame++
       const t = frame * 0.03
+      const stepWindow = maxStep + 1
+      const activeStep = Math.floor(frame / 38) % stepWindow
+      const activeLinks = linksData.filter(d => d.step <= activeStep)
+      const activeNodes = new Set()
+      for (const d of activeLinks) {
+        activeNodes.add(d.source.id || d.source)
+        activeNodes.add(d.target.id || d.target)
+      }
+
       node.selectAll('circle')
-        .attr('r', d => d.r + Math.sin(t + d.pulsePhase) * 2)
-      link.attr('stroke-opacity', 0.3 + Math.sin(t * 0.5) * 0.2)
+        .attr('r', d => {
+          const active = activeNodes.has(d.id)
+          const entering = d.firstStep === activeStep
+          return d.r + (active ? 1.5 : 0) + (entering ? 5 : 0) + Math.sin(t + d.pulsePhase) * (active ? 1.4 : 0.4)
+        })
+        .attr('opacity', d => activeNodes.has(d.id) ? 0.95 : 0.25)
+        .attr('stroke-width', d => d.firstStep === activeStep ? 3 : 1)
+
+      link
+        .attr('stroke', d => d.step === activeStep ? '#f6d365' : d.step < activeStep ? '#58c7ff' : '#3b4455')
+        .attr('stroke-opacity', d => d.step <= activeStep ? (d.step === activeStep ? 0.95 : 0.42) : 0.08)
+        .attr('stroke-width', d => d.step === activeStep ? 2.8 + Math.sqrt(d.count || 1) : 1 + Math.min(3, Math.sqrt(d.count || 1) * 0.4))
+
+      flowParticles
+        .attr('opacity', d => d.step <= activeStep ? (d.step === activeStep ? 0.95 : 0.45) : 0)
+        .attr('cx', d => {
+          const p = ((t * 0.9 + d.step * 0.17) % 1)
+          return d.source.x + (d.target.x - d.source.x) * p
+        })
+        .attr('cy', d => {
+          const p = ((t * 0.9 + d.step * 0.17) % 1)
+          return d.source.y + (d.target.y - d.source.y) * p
+        })
+
+      const current = relationSequence.filter((rel) => (Number.isFinite(rel.step) ? rel.step : 0) === activeStep).slice(0, 3)
+      stageLabel.text(`传导阶段 ${activeStep + 1}/${stepWindow} · 已激活关系 ${activeLinks.length}/${linksData.length}`)
+      stageHint.text(current.map((rel) => `${rel.source} → ${rel.target}`).join('  |  '))
       animationId = requestAnimationFrame(animate)
     }
     animate()

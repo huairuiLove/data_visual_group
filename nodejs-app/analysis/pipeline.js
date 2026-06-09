@@ -8,30 +8,58 @@ const { runQuery } = require('../services/neo4j');
 const natural = require('natural');
 const tokenizer = new natural.WordTokenizer();
 
+const TECHNICAL_NODE_LABELS = [
+  'Document',
+  'RagChunk',
+  'RagSection',
+  'RagParentChunk',
+  'RagCommunity',
+  'GraphRelation',
+  'ResearchReport',
+];
+
+const TECHNICAL_REL_TYPES = [
+  'HAS_CHUNK',
+  'HAS_SECTION',
+  'HAS_PARENT_CHUNK',
+  'HAS_CHILD_CHUNK',
+  'HAS_GRAPH_RELATION',
+  'HAS_COMMUNITY',
+  'CONTAINS_ENTITY',
+  'AS_RELATION_SOURCE',
+  'AS_RELATION_TARGET',
+];
+
 // --- 实体提取 ---
 async function extractEntities() {
   try {
     const nodeTypes = await runQuery(`
       MATCH (n)
-      WHERE NOT n:Document
+      WHERE none(label IN labels(n) WHERE label IN $technicalLabels)
       WITH labels(n) AS labels
       UNWIND labels AS label
+      WITH label
+      WHERE label <> 'VectorNode'
       RETURN label, count(*) AS count
       ORDER BY count DESC
-    `);
+    `, { technicalLabels: TECHNICAL_NODE_LABELS });
 
     const relTypes = await runQuery(`
-      MATCH ()-[r]->()
+      MATCH (n)-[r]->(m)
+      WHERE none(label IN labels(n) WHERE label IN $technicalLabels)
+        AND none(label IN labels(m) WHERE label IN $technicalLabels)
+        AND NOT type(r) IN $technicalRelTypes
       RETURN type(r) AS type, count(*) AS count
       ORDER BY count DESC
-    `);
+    `, { technicalLabels: TECHNICAL_NODE_LABELS, technicalRelTypes: TECHNICAL_REL_TYPES });
 
     const allNodes = await runQuery(`
       MATCH (n)
-      WHERE NOT n:Document
-      RETURN labels(n)[0] AS type, n.id AS id, n.text AS text
+      WHERE none(label IN labels(n) WHERE label IN $technicalLabels)
+      WITH n, [label IN labels(n) WHERE label <> 'VectorNode'] AS businessLabels
+      RETURN businessLabels[0] AS type, n.id AS id, n.text AS text
       LIMIT 500
-    `);
+    `, { technicalLabels: TECHNICAL_NODE_LABELS });
 
     return {
       nodeTypes,
@@ -50,12 +78,17 @@ async function extractGraphEdges() {
   try {
     return await runQuery(`
       MATCH (n)-[r]->(m)
-      WHERE NOT n:Document AND NOT m:Document
-      RETURN labels(n)[0] AS source_type, n.id AS source_id, n.text AS source_text,
+      WHERE none(label IN labels(n) WHERE label IN $technicalLabels)
+        AND none(label IN labels(m) WHERE label IN $technicalLabels)
+        AND NOT type(r) IN $technicalRelTypes
+      WITH n, r, m,
+           [label IN labels(n) WHERE label <> 'VectorNode'] AS sourceLabels,
+           [label IN labels(m) WHERE label <> 'VectorNode'] AS targetLabels
+      RETURN sourceLabels[0] AS source_type, n.id AS source_id, n.text AS source_text,
              type(r) AS relation,
-             labels(m)[0] AS target_type, m.id AS target_id, m.text AS target_text
+             targetLabels[0] AS target_type, m.id AS target_id, m.text AS target_text
       LIMIT 500
-    `);
+    `, { technicalLabels: TECHNICAL_NODE_LABELS, technicalRelTypes: TECHNICAL_REL_TYPES });
   } catch (e) {
     console.error('提取边关系失败:', e);
     return [];
@@ -356,6 +389,65 @@ function buildGraphForVisualization(entityData, edges) {
   return { nodes, links };
 }
 
+function buildChunkStructure(docs) {
+  const sections = new Map();
+  const parents = new Map();
+  const children = [];
+
+  docs.forEach((doc, index) => {
+    const text = doc.text || doc.page_content || '';
+    const source = doc.source || '当前文档';
+    const sectionTitle = doc.sectionTitle || doc.sectionPath?.join(' > ') || '全文';
+    const sectionKey = `${source}::${doc.sectionId || sectionTitle}`;
+    const parentKey = `${sectionKey}::parent:${doc.parentIndex ?? index}`;
+
+    if (!sections.has(sectionKey)) {
+      sections.set(sectionKey, {
+        id: sectionKey,
+        title: sectionTitle,
+        source,
+        level: doc.sectionLevel || 0,
+        childCount: 0,
+        parentCount: 0,
+        chars: 0,
+      });
+    }
+    if (!parents.has(parentKey)) {
+      parents.set(parentKey, {
+        id: parentKey,
+        sectionId: sectionKey,
+        parentIndex: doc.parentIndex ?? index,
+        childCount: 0,
+        chars: 0,
+      });
+      sections.get(sectionKey).parentCount += 1;
+    }
+
+    const child = {
+      id: `${parentKey}::child:${doc.childIndex ?? index}`,
+      sectionId: sectionKey,
+      parentId: parentKey,
+      index,
+      childIndex: doc.childIndex ?? index,
+      chars: text.length,
+    };
+    children.push(child);
+    parents.get(parentKey).childCount += 1;
+    parents.get(parentKey).chars += child.chars;
+    sections.get(sectionKey).childCount += 1;
+    sections.get(sectionKey).chars += child.chars;
+  });
+
+  return {
+    sections: [...sections.values()],
+    parents: [...parents.values()],
+    children,
+    sectionCount: sections.size,
+    parentCount: parents.size,
+    childCount: children.length,
+  };
+}
+
 async function runDataAnalysis(docs, fileName) {
   console.log('='.repeat(50));
   console.log('开始数据分析和清洗管线...');
@@ -389,6 +481,7 @@ async function runDataAnalysis(docs, fileName) {
 
   // Compute stats
   const textLengths = docs.map(d => (d.text || d.page_content || '').length);
+  const chunkStructure = buildChunkStructure(docs);
   const meta = {
     title: fileName,
     processedAt: new Date().toISOString(),
@@ -445,6 +538,7 @@ async function runDataAnalysis(docs, fileName) {
       textLengths,
       meanChunkSize: textLengths.length ? Math.round(textLengths.reduce((a, b) => a + b, 0) / textLengths.length) : 0,
       totalChars: textLengths.reduce((a, b) => a + b, 0),
+      chunkStructure,
       entityDistribution,
       relationDistribution: relDistribution,
     },

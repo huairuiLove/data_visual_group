@@ -3,6 +3,37 @@ import { ref, computed, watch } from 'vue'
 import { api } from '../services/api'
 
 const PERSIST_KEY = 'datagraphx.app.v1'
+const TECHNICAL_GRAPH_TYPES = new Set([
+  'Document',
+  'VectorNode',
+  'RagChunk',
+  'RagSection',
+  'RagParentChunk',
+  'RagCommunity',
+  'GraphRelation',
+  'ResearchReport',
+])
+
+function endpointId(value) {
+  if (value && typeof value === 'object') return String(value.id ?? value.name ?? value.text ?? '')
+  return String(value ?? '')
+}
+
+function isContentGraphNode(node) {
+  const id = String(node?.id || '')
+  const type = String(node?.type || '')
+  if (!id || TECHNICAL_GRAPH_TYPES.has(type)) return false
+  return !/:(chunk|parent|section|relation|community):/i.test(id)
+}
+
+function contentGraphData(raw = { nodes: [], links: [] }) {
+  const nodes = (raw.nodes || []).filter(isContentGraphNode)
+  const ids = new Set(nodes.map((node) => String(node.id)))
+  const links = (raw.links || [])
+    .filter((link) => ids.has(endpointId(link.source)) && ids.has(endpointId(link.target)))
+    .filter((link) => !String(link.type || link.relation || '').startsWith('HAS_'))
+  return { nodes, links }
+}
 
 function loadPersistedState() {
   if (typeof window === 'undefined') return {}
@@ -69,7 +100,7 @@ export const useAppStore = defineStore('app', () => {
   const personData = computed(() => analysisResult.value?.personData || {})
   const timeline = computed(() => analysisResult.value?.timeline || [])
   const spatialData = computed(() => analysisResult.value?.spatialData || {})
-  const graphData = computed(() => analysisResult.value?.graphData || { nodes: [], links: [] })
+  const graphData = computed(() => contentGraphData(analysisResult.value?.graphData || { nodes: [], links: [] }))
   const edges = computed(() => analysisResult.value?.edges || [])
   const insights = computed(() => analysisResult.value?.insights || [])
   const work1Metrics = computed(() => analysisResult.value?.work1Metrics || {})
@@ -190,12 +221,13 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
-  async function uploadFile(file) {
+  async function uploadFile(input) {
     loading.value = true
     error.value = ''
     try {
+      const files = Array.isArray(input) ? input : [input]
       const formData = new FormData()
-      formData.append('file', file)
+      for (const file of files.filter(Boolean)) formData.append('file', file)
       formData.append('llmProvider', llmProvider.value)
       formData.append('analysisMode', analysisMode.value)
 
@@ -218,25 +250,43 @@ export const useAppStore = defineStore('app', () => {
   }
 
   async function reanalyze() {
-    fileProcessed.value = false
-    currentFile.value = ''
-    currentFileHash.value = ''
-    analysisResult.value = null
-    clearPersistedState()
     await api.post('/reset', {})
+    savePersistedState({
+      apiConfigured: apiConfigured.value,
+      neo4jConnected: neo4jConnected.value,
+      fileProcessed: fileProcessed.value,
+      llmProvider: llmProvider.value,
+      baseURL: baseURL.value,
+      modelName: modelName.value,
+      analysisMode: analysisMode.value,
+      currentFile: currentFile.value,
+      currentFileHash: currentFileHash.value,
+      analysisResult: withoutLargeText(analysisResult.value),
+      savedAt: new Date().toISOString(),
+    })
   }
 
-  async function runMultiAnalysis(articleIds) {
-    loading.value = true
+  async function listUploadedDocuments() {
     try {
-      const res = await api.post('/analyze-multi', {
-        articleIds,
-        llmProvider: llmProvider.value,
-      })
+      const res = await api.get('/documents')
+      return res.documents || []
+    } catch {
+      return []
+    }
+  }
+
+  async function analyzeUploadedDocuments(hashes) {
+    loading.value = true
+    error.value = ''
+    try {
+      const res = await api.post('/documents/analyze', { hashes })
       if (res.success) {
         analysisResult.value = res.analysisResult
-        currentFile.value = res.analysisResult.fileName
+        currentFile.value = res.fileName
+        currentFileHash.value = res.fileHash
         fileProcessed.value = true
+      } else {
+        error.value = res.error || '分析失败'
       }
       return res
     } catch (e) {
@@ -318,7 +368,8 @@ export const useAppStore = defineStore('app', () => {
     confirmEmbeddings,
     uploadFile,
     reanalyze,
-    runMultiAnalysis,
+    listUploadedDocuments,
+    analyzeUploadedDocuments,
     generateNotebook,
     finalizeResearchReport,
     listResearchReports,

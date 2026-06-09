@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useAppStore } from '../stores/app'
-import { usePlotly } from '../composables/usePlotly'
+import { usePlotly, generateColors } from '../composables/usePlotly'
 import KpiCard from '../components/KpiCard.vue'
 
 const store = useAppStore()
@@ -25,32 +25,70 @@ const filteredTimeline = computed(() => {
 })
 
 const isSparse = computed(() => store.timeline.length <= 3)
+const categoryColors = computed(() => {
+  const cats = allCategories.value.filter((cat) => cat !== '全部')
+  const colors = generateColors(cats.length || 1)
+  return Object.fromEntries(cats.map((cat, i) => [cat, colors[i]]))
+})
+
+function colorForCategory(category) {
+  return categoryColors.value[category] || '#4a9eff'
+}
 
 function renderChart() {
-  const data = []
+  const rows = []
   store.timeline.forEach(day => {
     (day.events || []).forEach(evt => {
-      data.push({ date: day.date, category: evt.category || '其他' })
+      const category = evt.category || '其他'
+      if (selectedCategory.value === '全部' || selectedCategory.value === category) {
+        rows.push({ date: day.date, category, summary: evt.summary || '' })
+      }
     })
   })
 
   const counts = {}
-  data.forEach(d => { const k = d.date + '|' + d.category; counts[k] = (counts[k] || 0) + 1 })
-
-  const x = [], y = [], s = []
-  Object.entries(counts).forEach(([key, count]) => {
-    const [date, cat] = key.split('|')
-    x.push(date); y.push(cat); s.push(Math.max(5, count * 12))
+  rows.forEach(d => {
+    const k = d.date + '|' + d.category
+    if (!counts[k]) counts[k] = { date: d.date, category: d.category, count: 0, summaries: [] }
+    counts[k].count += 1
+    if (counts[k].summaries.length < 3) counts[k].summaries.push(d.summary)
   })
 
-  render([{ type: 'scatter', mode: 'markers', x, y,
-    marker: { size: s, sizemode: 'diameter', color: '#4a9eff' },
-    text: s.map((si, i) => `${y[i]}: ${si} events`), hoverinfo: 'text',
-  }], { xaxis: { tickangle: -45 } })
+  const grouped = Object.values(counts)
+  const categories = [...new Set(grouped.map(d => d.category))].sort()
+  const traces = categories.map((category) => {
+    const points = grouped.filter(d => d.category === category).sort((a, b) => a.date.localeCompare(b.date))
+    return {
+      type: 'scatter',
+      mode: 'markers',
+      name: category,
+      x: points.map(p => p.date),
+      y: points.map(p => p.category),
+      marker: {
+        size: points.map(p => 12 + Math.sqrt(p.count) * 12),
+        sizemode: 'diameter',
+        color: colorForCategory(category),
+        opacity: 0.82,
+        line: { width: 1, color: '#fff' },
+      },
+      customdata: points.map(p => `${p.category}: ${p.count} 个事件<br>${p.summaries.map(s => String(s).slice(0, 140)).join('<br>')}`),
+      hovertemplate: '%{x}<br>%{customdata}<extra></extra>',
+    }
+  })
+
+  render(traces, {
+    title: '按类别聚合的事件时间线',
+    xaxis: { tickangle: -45, title: '日期' },
+    yaxis: { title: '事件类别', categoryorder: 'array', categoryarray: categories },
+    hovermode: 'closest',
+    legend: { orientation: 'h', y: -0.24 },
+    margin: { l: 90, r: 20, t: 45, b: 95 },
+  })
 }
 
 onMounted(renderChart)
 watch(() => store.analysisResult, renderChart)
+watch(selectedCategory, renderChart)
 </script>
 
 <template>
@@ -84,7 +122,7 @@ watch(() => store.analysisResult, renderChart)
           <details v-if="day.events.length" :open="isSparse">
             <summary><b>{{ day.date }}</b> &mdash; {{ day.events.length }} 个事件</summary>
             <p v-for="(evt, j) in day.events" :key="j">
-              <b>[{{ evt.category || '其他' }}]</b>
+              <b :style="{ color: colorForCategory(evt.category || '其他') }">[{{ evt.category || '其他' }}]</b>
               {{ isSparse ? (evt.summary || '').slice(0, 600) : (evt.summary || '').slice(0, 200) + '...' }}
             </p>
           </details>

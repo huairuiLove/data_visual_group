@@ -22,6 +22,7 @@ const {
   saveGraphData,
   loadGraphData,
   chunkText,
+  chunkDocument,
 } = require('../services/document')
 const { runDataAnalysis } = require('../analysis/pipeline')
 const { computeWork1Metrics, enrichAnalysisResult } = require('../analysis/work1-metrics')
@@ -37,12 +38,6 @@ const {
   getResearchReport,
   ensureSchema,
 } = require('../services/research-report-db')
-const {
-  loadArticleIndex,
-  ingestArticle,
-  filterArticles,
-  runJointAnalysis,
-} = require('../services/multi-article')
 const config = require('../config')
 
 const UPLOAD_DIR = path.join(process.cwd(), '..', 'data', 'uploads')
@@ -70,8 +65,39 @@ const ALLOWED_UPLOAD_EXTENSIONS = new Set([
   '.html',
   '.htm',
 ])
+const TECHNICAL_NODE_LABELS = [
+  'Document',
+  'RagChunk',
+  'RagSection',
+  'RagParentChunk',
+  'RagCommunity',
+  'GraphRelation',
+  'ResearchReport',
+]
+const TECHNICAL_REL_TYPES = [
+  'HAS_CHUNK',
+  'HAS_SECTION',
+  'HAS_PARENT_CHUNK',
+  'HAS_CHILD_CHUNK',
+  'HAS_GRAPH_RELATION',
+  'HAS_COMMUNITY',
+  'CONTAINS_ENTITY',
+  'AS_RELATION_SOURCE',
+  'AS_RELATION_TARGET',
+]
+
+function businessLabel(labels = []) {
+  return labels.find((label) => label !== 'VectorNode' && !TECHNICAL_NODE_LABELS.includes(label)) || ''
+}
+
+function isBusinessEntity(entity) {
+  const type = String(entity?.type || '')
+  return Boolean(entity?.id || entity?.name) && type && type !== 'VectorNode' && !TECHNICAL_NODE_LABELS.includes(type)
+}
 
 let appState = {}
+let vectorIndexAvailable = null
+const MAX_RAG_CHUNKS = 300
 
 function apiError(statusCode, message, code = 'API_ERROR') {
   return createError({
@@ -125,8 +151,6 @@ async function readUploadParts(event, multiple = false) {
 }
 
 async function persistExtractionToNeo4j(entities, relations) {
-  await runQuery('MATCH (n) WHERE NOT n:Document DETACH DELETE n')
-
   const seenNodeIds = new Set()
   const allNodes = []
   const allRels = []
@@ -171,31 +195,511 @@ async function persistExtractionToNeo4j(entities, relations) {
   }
 }
 
-async function handleUpload(event) {
-  const { fields, files } = await readUploadParts(event)
-  const file = files[0]
-  if (!file) throw apiError(400, '未选择文件', 'MISSING_FILE')
+async function ensureVectorIndex(dimension) {
+  if (!dimension) return false
+  if (vectorIndexAvailable === true) return true
+
+  const existing = await runQuery(
+    `SHOW INDEXES
+     YIELD name, type
+     WHERE name = 'vector_index' AND type = 'VECTOR'
+     RETURN name
+     LIMIT 1`
+  ).catch(() => [])
+  if (existing.length) {
+    vectorIndexAvailable = true
+    return true
+  }
+
+  await runQuery(
+    `CREATE VECTOR INDEX vector_index IF NOT EXISTS
+     FOR (n:VectorNode) ON (n.embedding)
+     OPTIONS {indexConfig: {
+       \`vector.dimensions\`: ${Number(dimension)},
+       \`vector.similarity_function\`: 'cosine'
+     }}`
+  )
+  await runQuery('CALL db.awaitIndexes(30)').catch(() => {})
+  vectorIndexAvailable = true
+  return true
+}
+
+async function embedVectorNodes(items) {
+  const candidates = items.filter((item) => item.id && item.text)
+  if (!candidates.length) return { success: false, indexed: 0 }
 
   try {
-    const filePath = file.path
-    const fileName = file.originalname
-    const typeCheck = validateFileType(fileName)
-    if (!typeCheck.valid) throw apiError(415, typeCheck.reason, 'UNSUPPORTED_FILE_TYPE')
+    const embeddings = new LocalEmbeddings()
+    let indexed = 0
+    let dimension = 0
 
-    const fileContent = await fsp.readFile(filePath)
-    const fileHash = generateFileHash(fileContent)
+    for (const item of candidates) {
+      const vector = await embeddings.embedQuery(item.text)
+      dimension = dimension || vector.length
+      await ensureVectorIndex(dimension)
+      await item.persist(vector)
+      indexed += 1
+    }
+
+    return { success: true, indexed }
+  } catch (error) {
+    vectorIndexAvailable = null
+    console.warn('Vector embedding indexing skipped:', error.message)
+    return { success: false, indexed: 0, message: error.message }
+  }
+}
+
+async function ensureDocumentEmbedding(fileHash, fileName, fullText) {
+  const text = compactText(fullText, 3000)
+  if (!fileHash || !text) return { success: false, indexed: 0 }
+
+  return embedVectorNodes([
+    {
+      id: fileHash,
+      text: [fileName, text].filter(Boolean).join('\n'),
+      persist: (embedding) =>
+        runQuery(
+          `MERGE (d:Document {hash: $hash})
+           SET d:VectorNode,
+               d.name = $name,
+               d.text = $text,
+               d.embedding = $embedding,
+               d.embeddingText = $embeddingText,
+               d.vectorKind = 'document'`,
+          { hash: fileHash, name: fileName, text, embedding, embeddingText: [fileName, text].filter(Boolean).join('\n') }
+        ),
+    },
+  ])
+}
+
+async function ensureSectionEmbeddings(fileHash, fileName, chunks) {
+  const sectionMap = new Map()
+  for (const chunk of chunks || []) {
+    const key = chunk.sectionId || `${chunk.source || fileName}:section:0`
+    const id = `${fileHash}:section:${sectionMap.size}:${String(chunk.sectionTitle || '全文').slice(0, 40)}`
+    const existing = sectionMap.get(key)
+    if (existing) {
+      existing.texts.push(chunk.text)
+      continue
+    }
+    sectionMap.set(key, {
+      id,
+      sourceSectionId: key,
+      title: chunk.sectionTitle || '全文',
+      path: chunk.sectionPath || [chunk.sectionTitle || '全文'],
+      level: chunk.sectionLevel || 0,
+      index: chunk.sectionIndex || 0,
+      source: chunk.source || fileName,
+      texts: [chunk.text],
+    })
+  }
+
+  const sections = [...sectionMap.values()].map((section) => ({
+    ...section,
+    text: compactText(`${section.path.join(' > ')}\n${section.texts.join('\n')}`, 3000),
+  }))
+
+  if (!sections.length) return { success: false, indexed: 0, sectionMap: new Map() }
+
+  await runQuery(
+    `MATCH (:Document {hash: $hash})-[:HAS_SECTION]->(s:RagSection)
+     DETACH DELETE s`,
+    { hash: fileHash }
+  ).catch(() => {})
+
+  const indexed = await embedVectorNodes(
+    sections.map((section) => ({
+      id: section.id,
+      text: section.text,
+      persist: (embedding) =>
+        runQuery(
+          `MATCH (d:Document {hash: $hash})
+           MERGE (s:RagSection {id: $id})
+           SET s:VectorNode,
+               s.title = $title,
+               s.path = $path,
+               s.level = $level,
+               s.sectionIndex = $sectionIndex,
+               s.source = $source,
+               s.text = $text,
+               s.embedding = $embedding,
+               s.embeddingText = $text,
+               s.vectorKind = 'section'
+           MERGE (d)-[:HAS_SECTION]->(s)`,
+          {
+            hash: fileHash,
+            id: section.id,
+            title: section.title,
+            path: section.path,
+            level: section.level,
+            sectionIndex: section.index,
+            source: section.source,
+            text: section.text,
+            embedding,
+          }
+        ),
+    }))
+  )
+
+  const idBySourceSection = new Map([...sectionMap.entries()].map(([sourceId, section]) => [sourceId, section.id]))
+  return { ...indexed, sectionMap: idBySourceSection }
+}
+
+async function ensureParentChunkEmbeddings(fileHash, fileName, chunks, sectionMap = new Map()) {
+  const parentMap = new Map()
+  for (const chunk of chunks || []) {
+    if (!chunk?.parentText) continue
+    const parentId = `${fileHash}:parent:${chunk.parentIndex ?? parentMap.size}`
+    if (!parentMap.has(parentId)) {
+      parentMap.set(parentId, {
+        id: parentId,
+        sourceParentId: chunk.parentId,
+        source: chunk.source || fileName,
+        parentIndex: chunk.parentIndex ?? parentMap.size,
+        text: compactText(chunk.parentText, 2600),
+        sectionId: chunk.sectionId || '',
+        sectionNodeId: sectionMap.get(chunk.sectionId || '') || '',
+      })
+    }
+  }
+
+  const parentItems = [...parentMap.values()].map((parent) => ({
+    id: parent.id,
+    text: parent.text,
+    persist: (embedding) =>
+      runQuery(
+        `MATCH (d:Document {hash: $hash})
+         OPTIONAL MATCH (s:RagSection {id: $sectionNodeId})
+         MERGE (p:RagParentChunk {id: $id})
+         SET p:VectorNode,
+             p.text = $text,
+             p.source = $source,
+             p.parentIndex = $parentIndex,
+             p.embedding = $embedding,
+             p.embeddingText = $text,
+             p.vectorKind = 'parent-chunk'
+         MERGE (d)-[:HAS_PARENT_CHUNK]->(p)
+         FOREACH (_ IN CASE WHEN s IS NULL THEN [] ELSE [1] END |
+           MERGE (s)-[:HAS_PARENT_CHUNK]->(p)
+         )`,
+        {
+          hash: fileHash,
+          id: parent.id,
+          sectionNodeId: parent.sectionNodeId || '',
+          text: parent.text,
+          source: parent.source || fileName,
+          parentIndex: parent.parentIndex,
+          embedding,
+        }
+      ),
+  }))
+
+  if (!parentItems.length) return { success: false, indexed: 0 }
+  await runQuery(
+    `MATCH (:Document {hash: $hash})-[:HAS_PARENT_CHUNK]->(p:RagParentChunk)
+     DETACH DELETE p`,
+    { hash: fileHash }
+  ).catch(() => {})
+  return embedVectorNodes(parentItems)
+}
+
+async function ensureChunkEmbeddings(fileHash, fileName, chunks, sectionMap = new Map()) {
+  const chunkItems = (chunks || [])
+    .slice(0, MAX_RAG_CHUNKS)
+    .map((chunk, index) => {
+      const text = compactText(typeof chunk === 'string' ? chunk : chunk.text, 1800)
+      const id = `${fileHash}:chunk:${index}`
+      const parentId = chunk?.parentText ? `${fileHash}:parent:${chunk.parentIndex ?? 0}` : ''
+      const sourceName = chunk?.source || fileName
+      const sectionNodeId = sectionMap.get(chunk?.sectionId || '') || ''
+      return {
+        id,
+        text,
+        persist: (embedding) =>
+          runQuery(
+            `MATCH (d:Document {hash: $hash})
+             OPTIONAL MATCH (p:RagParentChunk {id: $parentId})
+             OPTIONAL MATCH (s:RagSection {id: $sectionNodeId})
+             MERGE (c:RagChunk {id: $id})
+             SET c:VectorNode,
+                 c.text = $text,
+                 c.source = $source,
+                 c.chunkIndex = $index,
+                 c.parentIndex = $parentIndex,
+                 c.sectionTitle = $sectionTitle,
+                 c.embedding = $embedding,
+                 c.embeddingText = $text,
+                 c.vectorKind = 'chunk'
+             MERGE (d)-[:HAS_CHUNK]->(c)
+             FOREACH (_ IN CASE WHEN p IS NULL THEN [] ELSE [1] END |
+               MERGE (p)-[:HAS_CHILD_CHUNK]->(c)
+             )
+             FOREACH (_ IN CASE WHEN s IS NULL THEN [] ELSE [1] END |
+               MERGE (s)-[:HAS_CHILD_CHUNK]->(c)
+             )`,
+            {
+              hash: fileHash,
+              parentId,
+              sectionNodeId,
+              id,
+              text,
+              source: sourceName,
+              index,
+              parentIndex: chunk?.parentIndex ?? null,
+              sectionTitle: chunk?.sectionTitle || '',
+              embedding,
+            }
+          ),
+      }
+    })
+
+  if (!chunkItems.length) return { success: false, indexed: 0 }
+  await runQuery(
+    `MATCH (:Document {hash: $hash})-[:HAS_CHUNK]->(c:RagChunk)
+     DETACH DELETE c`,
+    { hash: fileHash }
+  ).catch(() => {})
+  return embedVectorNodes(chunkItems)
+}
+
+async function ensureEntityEmbeddings(entities, fileHash) {
+  const candidates = (entities || [])
+    .map((entity) => ({
+      id: String(entity.name || entity.id || '').trim(),
+      text: [entity.name || entity.id, entity.type, entity.summary, ...(entity.aliases || [])]
+        .filter(Boolean)
+        .join(' ')
+        .slice(0, 1200),
+    }))
+    .filter((entity) => entity.id && entity.text)
+
+  return embedVectorNodes(
+    candidates.map((item) => ({
+      ...item,
+      persist: (embedding) =>
+        runQuery(
+          fileHash
+            ? `MATCH (n {id: $id})
+               MATCH (d:Document {hash: $hash})
+               SET n:VectorNode,
+                   n.embedding = $embedding,
+                   n.embeddingText = $text,
+                   n.vectorKind = 'entity'
+               MERGE (d)-[:MENTIONS]->(n)`
+            : `MATCH (n {id: $id})
+               SET n:VectorNode,
+                   n.embedding = $embedding,
+                   n.embeddingText = $text,
+                   n.vectorKind = 'entity'`,
+          { id: item.id, hash: fileHash, embedding, text: item.text }
+        ),
+    }))
+  )
+}
+
+async function ensureRelationEmbeddings(relations, fileHash) {
+  const candidates = (relations || [])
+    .map((rel, index) => {
+      const source = String(rel.source || rel.source_id || '').trim()
+      const target = String(rel.target || rel.target_id || '').trim()
+      const type = String(rel.type || rel.relation || '关系').trim()
+      const summary = rel.summary || ''
+      return {
+        id: `${fileHash}:relation:${index}:${source}->${target}`.slice(0, 220),
+        source,
+        target,
+        relationType: type,
+        text: compactText(`${source} -[${type}]-> ${target}. ${summary}`, 1200),
+      }
+    })
+    .filter((rel) => rel.source && rel.target && rel.text)
+
+  if (!candidates.length) return { success: false, indexed: 0 }
+  await runQuery(
+    `MATCH (:Document {hash: $hash})-[:HAS_GRAPH_RELATION]->(gr:GraphRelation)
+     DETACH DELETE gr`,
+    { hash: fileHash }
+  ).catch(() => {})
+
+  return embedVectorNodes(
+    candidates.map((rel) => ({
+      id: rel.id,
+      text: rel.text,
+      persist: (embedding) =>
+        runQuery(
+          `MATCH (d:Document {hash: $hash})
+           OPTIONAL MATCH (s {id: $source})
+           OPTIONAL MATCH (t {id: $target})
+           MERGE (gr:GraphRelation {id: $id})
+           SET gr:VectorNode,
+               gr.source = $source,
+               gr.target = $target,
+               gr.relationType = $relationType,
+               gr.text = $text,
+               gr.embedding = $embedding,
+               gr.embeddingText = $text,
+               gr.vectorKind = 'graph-relation'
+           MERGE (d)-[:HAS_GRAPH_RELATION]->(gr)
+           FOREACH (_ IN CASE WHEN s IS NULL THEN [] ELSE [1] END |
+             MERGE (s)-[:AS_RELATION_SOURCE]->(gr)
+           )
+           FOREACH (_ IN CASE WHEN t IS NULL THEN [] ELSE [1] END |
+             MERGE (gr)-[:AS_RELATION_TARGET]->(t)
+           )`,
+          { hash: fileHash, id: rel.id, source: rel.source, target: rel.target, relationType: rel.relationType, text: rel.text, embedding }
+        ),
+    }))
+  )
+}
+
+function buildCommunities(entities, relations) {
+  const entityById = new Map((entities || []).map((e) => [String(e.id || e.name || '').trim(), e]))
+  const adj = new Map()
+  for (const id of entityById.keys()) adj.set(id, new Set())
+  for (const rel of relations || []) {
+    const source = String(rel.source || rel.source_id || '').trim()
+    const target = String(rel.target || rel.target_id || '').trim()
+    if (!source || !target || !adj.has(source) || !adj.has(target)) continue
+    adj.get(source).add(target)
+    adj.get(target).add(source)
+  }
+
+  const seen = new Set()
+  const communities = []
+  for (const id of adj.keys()) {
+    if (seen.has(id)) continue
+    const queue = [id]
+    const members = []
+    seen.add(id)
+    while (queue.length) {
+      const current = queue.shift()
+      members.push(current)
+      for (const next of adj.get(current) || []) {
+        if (!seen.has(next)) {
+          seen.add(next)
+          queue.push(next)
+        }
+      }
+    }
+    if (members.length < 2) continue
+    const memberSet = new Set(members)
+    const internalRelations = (relations || [])
+      .filter((rel) => memberSet.has(String(rel.source || rel.source_id || '').trim()) && memberSet.has(String(rel.target || rel.target_id || '').trim()))
+      .slice(0, 30)
+    communities.push({
+      members,
+      internalRelations,
+      text: compactText(
+        `社区实体: ${members.join(', ')}\n关系: ${internalRelations.map((r) => `${r.source || r.source_id} -[${r.type || r.relation}]-> ${r.target || r.target_id}`).join('; ')}`,
+        2500
+      ),
+    })
+  }
+  return communities.sort((a, b) => b.members.length - a.members.length).slice(0, 10)
+}
+
+async function ensureCommunityEmbeddings(entities, relations, fileHash) {
+  const communities = buildCommunities(entities, relations)
+  if (!communities.length) return { success: false, indexed: 0 }
+  await runQuery(
+    `MATCH (:Document {hash: $hash})-[:HAS_COMMUNITY]->(c:RagCommunity)
+     DETACH DELETE c`,
+    { hash: fileHash }
+  ).catch(() => {})
+
+  return embedVectorNodes(
+    communities.map((community, index) => ({
+      id: `${fileHash}:community:${index}`,
+      text: community.text,
+      persist: (embedding) =>
+        runQuery(
+          `MATCH (d:Document {hash: $hash})
+           MERGE (c:RagCommunity {id: $id})
+           SET c:VectorNode,
+               c.members = $members,
+               c.text = $text,
+               c.embedding = $embedding,
+               c.embeddingText = $text,
+               c.vectorKind = 'community'
+           MERGE (d)-[:HAS_COMMUNITY]->(c)
+           WITH c
+           UNWIND $members AS memberId
+           MATCH (n {id: memberId})
+           MERGE (c)-[:CONTAINS_ENTITY]->(n)`,
+          { hash: fileHash, id: `${fileHash}:community:${index}`, members: community.members, text: community.text, embedding }
+        ),
+    }))
+  )
+}
+
+async function linkChunksToMentionedEntities(fileHash, entities) {
+  const entityIds = (entities || []).map((entity) => String(entity.name || entity.id || '').trim()).filter(Boolean)
+  for (const id of entityIds.slice(0, 150)) {
+    await runQuery(
+      `MATCH (d:Document {hash: $hash})-[:HAS_CHUNK]->(c:RagChunk)
+       MATCH (n {id: $id})
+       WHERE c.text CONTAINS $id
+       MERGE (c)-[:MENTIONS]->(n)`,
+      { hash: fileHash, id }
+    ).catch(() => {})
+  }
+}
+
+async function ensureRagEmbeddings({ fileHash, fileName, fullText, chunks, entities, relations }) {
+  await runQuery(
+    `MERGE (d:Document {hash: $hash})
+     SET d.name = $name,
+         d.processed = true`,
+    { hash: fileHash, name: fileName }
+  )
+  const [documentIndex, chunkIndex, entityIndex, relationIndex, communityIndex] = await Promise.all([
+    ensureDocumentEmbedding(fileHash, fileName, fullText),
+    ensureSectionEmbeddings(fileHash, fileName, chunks).then((sectionIndex) =>
+      ensureParentChunkEmbeddings(fileHash, fileName, chunks, sectionIndex.sectionMap).then((parentIndex) =>
+        ensureChunkEmbeddings(fileHash, fileName, chunks, sectionIndex.sectionMap).then((childIndex) => ({ sectionIndex, parentIndex, childIndex }))
+      )
+    ),
+    ensureEntityEmbeddings(entities, fileHash),
+    ensureRelationEmbeddings(relations, fileHash),
+    ensureCommunityEmbeddings(entities, relations, fileHash),
+  ])
+  await linkChunksToMentionedEntities(fileHash, entities)
+  return { documentIndex, chunkIndex, entityIndex, relationIndex, communityIndex }
+}
+
+async function handleUpload(event) {
+  const { fields, files } = await readUploadParts(event, true)
+  if (!files.length) throw apiError(400, '未选择文件', 'MISSING_FILE')
+
+  try {
+    const fileContents = []
+    const allChunks = []
+    const fileNames = []
+    for (const file of files) {
+      const fileName = file.originalname
+      const typeCheck = validateFileType(fileName)
+      if (!typeCheck.valid) throw apiError(415, `${fileName}: ${typeCheck.reason}`, 'UNSUPPORTED_FILE_TYPE')
+      const fileContent = await fsp.readFile(file.path)
+      fileContents.push(fileContent)
+      fileNames.push(fileName)
+      allChunks.push(...(await processDocument(file.path, fileName)))
+    }
+
+    const isMultiUpload = files.length > 1
+    const fileName = isMultiUpload ? `联合上传 (${files.length} 篇): ${fileNames.join(', ')}` : fileNames[0]
+    const fileHash = generateFileHash(Buffer.concat(fileContents))
     const provider = fields.llmProvider || 'openai-compatible'
     const analysisMode = fields.analysisMode || config.analysis.defaultMode
 
     const existing = await runQuery('MATCH (d:Document {hash: $hash}) RETURN d', { hash: fileHash })
     const needProcessing = existing.length === 0
-    const chunks = await processDocument(filePath, fileName)
+    const chunks = allChunks
     const fullText = chunks.map((c) => c.text).join('\n')
     const articleMeta = parseArticleMeta(fullText)
     const bodyText = articleMeta.body && articleMeta.body.length > 100 ? articleMeta.body : fullText
     const bodyChunks =
-      bodyText !== fullText
-        ? chunkText(bodyText).map((text, i) => ({ text, source: fileName, index: i }))
+      !isMultiUpload && bodyText !== fullText
+        ? chunkDocument(bodyText, { source: fileName, page: 1 })
         : chunks
 
     if (config.analysis.requireMiddleEastTheme) {
@@ -229,10 +733,10 @@ async function handleUpload(event) {
 
     if (needProcessing) {
       const extraction = await extractFromChunks(bodyChunks, analysisMode, provider, {
-        title: articleMeta.title || fileName,
+        title: isMultiUpload ? fileName : articleMeta.title || fileName,
         date: articleMeta.date || new Date().toISOString().slice(0, 10),
-        source: articleMeta.source || '',
-        summary: articleMeta.summary || '',
+        source: isMultiUpload ? fileNames.join('; ') : articleMeta.source || '',
+        summary: isMultiUpload ? `联合分析 ${files.length} 个首页上传文档` : articleMeta.summary || '',
       })
       const canon = applyCanonicalization(extraction.entities, extraction.relations)
       extractedEntities = canon.entities
@@ -241,16 +745,26 @@ async function handleUpload(event) {
       const graphData = await persistExtractionToNeo4j(extractedEntities, extractedRelations)
       await saveGraphData(fileHash, graphData)
 
-      await runQuery('CREATE (d:Document {name: $name, hash: $hash, processed: true, mode: $mode})', {
+      await runQuery('MERGE (d:Document {hash: $hash}) SET d.name = $name, d.processed = true, d.mode = $mode', {
         name: fileName,
         hash: fileHash,
         mode: analysisMode,
       })
     }
 
+    await ensureRagEmbeddings({
+      fileHash,
+      fileName,
+      fullText,
+      chunks,
+      entities: extractedEntities,
+      relations: extractedRelations,
+    })
+
     const analysisResult = await runDataAnalysis(chunks, fileName)
-    analysisResult.mode = 'single'
+    analysisResult.mode = isMultiUpload ? 'multi' : 'single'
     analysisResult.analysisMode = analysisMode
+    analysisResult.articles = fileNames.map((name, index) => ({ id: String(index + 1), title: name, source: name }))
     analysisResult.entities = extractedEntities
     analysisResult.relations = extractedRelations
 
@@ -282,32 +796,8 @@ async function handleUpload(event) {
 
     return { success: true, fileName, fileHash, analysisResult }
   } finally {
-    await fsp.unlink(file.path).catch(() => {})
+    await Promise.all(files.map((file) => fsp.unlink(file.path).catch(() => {})))
   }
-}
-
-async function handleBatchUpload(event) {
-  const { fields, files } = await readUploadParts(event, true)
-  if (!files.length) throw apiError(400, '未选择文件', 'MISSING_FILE')
-
-  const provider = fields.llmProvider || 'openai-compatible'
-  const results = []
-
-  for (const file of files.slice(0, 20)) {
-    try {
-      const article = await ingestArticle(file.path, file.originalname, provider)
-      results.push({
-        success: true,
-        article: { id: article.id, title: article.title, themeTags: article.themeTags },
-      })
-    } catch (e) {
-      results.push({ success: false, fileName: file.originalname, error: e.message })
-    } finally {
-      await fsp.unlink(file.path).catch(() => {})
-    }
-  }
-
-  return { success: true, results, total: results.filter((r) => r.success).length }
 }
 
 async function getNeo4jSummary() {
@@ -326,6 +816,155 @@ async function getNeo4jSummary() {
   }
 }
 
+async function listUploadedDocuments() {
+  const rows = await runQuery(
+    `MATCH (d:Document)
+     OPTIONAL MATCH (d)-[:HAS_CHUNK]->(c:RagChunk)
+     OPTIONAL MATCH (d)-[:MENTIONS]->(e)
+     OPTIONAL MATCH (d)-[:HAS_GRAPH_RELATION]->(gr:GraphRelation)
+     RETURN d.hash AS hash,
+            d.name AS name,
+            d.mode AS mode,
+            d.processed AS processed,
+            d.text AS text,
+            count(DISTINCT c) AS chunkCount,
+            count(DISTINCT e) AS entityCount,
+            count(DISTINCT gr) AS relationCount
+     ORDER BY d.name`,
+  ).catch(() => [])
+  return rows
+    .filter((row) => row.hash)
+    .map((row) => ({
+      hash: row.hash,
+      name: row.name || row.hash,
+      mode: row.mode || 'single',
+      processed: Boolean(row.processed),
+      chunkCount: row.chunkCount || 0,
+      entityCount: row.entityCount || 0,
+      relationCount: row.relationCount || 0,
+      preview: compactText(row.text, 180),
+    }))
+}
+
+async function analyzeExistingDocuments(hashes) {
+  const selectedHashes = [...new Set((hashes || []).map((hash) => String(hash || '').trim()).filter(Boolean))]
+  if (!selectedHashes.length) throw apiError(400, '请选择至少 1 篇已上传文档', 'MISSING_DOCUMENTS')
+
+  const docRows = await runQuery(
+    `MATCH (d:Document)
+     WHERE d.hash IN $hashes
+     RETURN d.hash AS hash, d.name AS name
+     ORDER BY d.name`,
+    { hashes: selectedHashes }
+  )
+  if (!docRows.length) throw apiError(404, '未找到已上传文档', 'DOCUMENTS_NOT_FOUND')
+
+  const chunkRows = await runQuery(
+    `MATCH (d:Document)-[:HAS_CHUNK]->(c:RagChunk)
+     WHERE d.hash IN $hashes
+     OPTIONAL MATCH (p:RagParentChunk)-[:HAS_CHILD_CHUNK]->(c)
+     RETURN d.hash AS hash,
+            d.name AS documentName,
+            c.text AS text,
+            c.source AS source,
+            c.chunkIndex AS chunkIndex,
+            c.childIndex AS childIndex,
+            c.parentIndex AS parentIndex,
+            c.sectionId AS sectionId,
+            c.sectionTitle AS sectionTitle,
+            c.sectionPath AS sectionPath,
+            c.sectionLevel AS sectionLevel,
+            p.text AS parentText
+     ORDER BY d.name, c.chunkIndex`,
+    { hashes: selectedHashes }
+  )
+  if (!chunkRows.length) throw apiError(422, '这些文档没有可用文本块，请在首页重新上传分析一次', 'NO_RAG_CHUNKS')
+
+  const entityRows = await runQuery(
+    `MATCH (d:Document)-[:MENTIONS]->(e)
+     WHERE d.hash IN $hashes
+       AND none(label IN labels(e) WHERE label IN $technicalLabels)
+     RETURN DISTINCT coalesce(e.id, e.name) AS id,
+            labels(e) AS labels,
+            e.text AS text,
+            e.summary AS summary,
+            e.aliases AS aliases`,
+    { hashes: selectedHashes, technicalLabels: TECHNICAL_NODE_LABELS }
+  ).catch(() => [])
+
+  const relationRows = await runQuery(
+    `MATCH (d:Document)-[:HAS_GRAPH_RELATION]->(gr:GraphRelation)
+     WHERE d.hash IN $hashes
+     RETURN gr.source AS source,
+            gr.target AS target,
+            gr.relationType AS type,
+            gr.text AS text`,
+    { hashes: selectedHashes }
+  ).catch(() => [])
+
+  const chunks = chunkRows.map((row, index) => ({
+    text: row.text,
+    source: row.source || row.documentName,
+    index,
+    chunkIndex: row.chunkIndex,
+    childIndex: row.childIndex,
+    parentIndex: row.parentIndex,
+    sectionId: row.sectionId,
+    parentText: row.parentText,
+    sectionTitle: row.sectionTitle,
+    sectionPath: row.sectionPath,
+    sectionLevel: row.sectionLevel,
+  }))
+  const fileName = docRows.length > 1
+    ? `已上传文档联合分析 (${docRows.length} 篇)`
+    : docRows[0].name
+  const fullText = chunks.map((chunk) => chunk.text).join('\n')
+  const entities = entityRows.map((row) => ({
+    id: row.id,
+    name: row.id,
+    type: businessLabel(row.labels || []) || 'Unknown',
+    text: row.text || row.id,
+    summary: row.summary || '',
+    aliases: row.aliases || [],
+  })).filter(isBusinessEntity)
+  const relations = relationRows.map((row) => ({
+    source: row.source,
+    target: row.target,
+    type: row.type || '关系',
+    summary: row.text || '',
+  })).filter((rel) => rel.source && rel.target)
+
+  const analysisResult = await runDataAnalysis(chunks, fileName)
+  analysisResult.mode = docRows.length > 1 ? 'multi' : 'single'
+  analysisResult.analysisMode = 'existing_documents'
+  analysisResult.articles = docRows.map((row) => ({ id: row.hash, title: row.name, hash: row.hash }))
+  analysisResult.entities = entities
+  analysisResult.relations = relations
+  analysisResult.graphData = buildGraphDataFromExtraction(entities, relations)
+  analysisResult.edges = buildEdgesFromExtraction(entities, relations)
+  applyExtractionStatsFallback(analysisResult, entities, relations)
+  analysisResult.fullText = fullText
+  Object.assign(analysisResult, enrichAnalysisResult(analysisResult, fullText, chunks))
+  analysisResult.work1Metrics = computeWork1Metrics({
+    entities,
+    relations,
+    docs: chunks.map((chunk) => chunk.text),
+  })
+
+  appState.fileProcessed = true
+  appState.currentFile = fileName
+  appState.currentFileHash = selectedHashes.join(',')
+  appState.analysisResult = analysisResult
+  appState.lcDocsTexts = chunks.map((chunk) => chunk.text)
+
+  return {
+    success: true,
+    fileName,
+    fileHash: appState.currentFileHash,
+    analysisResult,
+  }
+}
+
 async function clearGraphCache() {
   const entries = await fsp.readdir(CACHE_DIR).catch(() => [])
   const files = entries.filter((name) => name.endsWith('.json'))
@@ -338,6 +977,7 @@ async function clearNeo4jAnalysisData(includeCache = true) {
   await runQuery('MATCH (n) DETACH DELETE n')
   const deletedCacheFiles = includeCache ? await clearGraphCache() : 0
   appState = {}
+  vectorIndexAvailable = null
   const after = await getNeo4jSummary()
   return {
     success: true,
@@ -468,49 +1108,19 @@ async function routeRequest(event, pathname, method) {
   }
 
   if (method === 'POST' && pathname === '/upload') return handleUpload(event)
+  if (method === 'GET' && pathname === '/documents') {
+    return { success: true, documents: await listUploadedDocuments() }
+  }
+  if (method === 'POST' && pathname === '/documents/analyze') {
+    const { hashes } = await readJsonBody(event)
+    return analyzeExistingDocuments(hashes)
+  }
   if (method === 'GET' && pathname === '/analysis') return appState.analysisResult || null
   if (method === 'GET' && pathname === '/state') return appState
   if (method === 'POST' && pathname === '/reset') {
     appState = {}
     return { success: true }
   }
-  if (method === 'POST' && pathname === '/upload-batch') return handleBatchUpload(event)
-
-  if (method === 'GET' && pathname === '/articles') {
-    const query = getQuery(event)
-    const index = await loadArticleIndex()
-    const filtered = filterArticles(index, {
-      themeTag: query.themeTag,
-      keyword: query.keyword,
-      minConfidence: query.minConfidence ? parseFloat(query.minConfidence) : undefined,
-    })
-    return {
-      articles: filtered.map((a) => ({
-        id: a.id,
-        title: a.title,
-        date: a.date,
-        themeTags: a.themeTags,
-        themeConfidence: a.themeConfidence,
-        entityCount: a.entityCount,
-        relationCount: a.relationCount,
-        summary: (a.summary || '').slice(0, 150),
-      })),
-      total: filtered.length,
-    }
-  }
-
-  if (method === 'POST' && pathname === '/analyze-multi') {
-    const { articleIds, llmProvider } = await readJsonBody(event)
-    if (!articleIds?.length) throw apiError(400, '请选择至少 2 篇文章', 'MISSING_ARTICLES')
-    const result = await runJointAnalysis(articleIds, llmProvider || 'openai-compatible')
-    const analysisResult = buildMultiAnalysisResult(result)
-    appState.fileProcessed = true
-    appState.currentFile = analysisResult.fileName
-    appState.analysisResult = analysisResult
-    appState.multiAnalysis = result
-    return { success: true, analysisResult }
-  }
-
   if (method === 'POST' && pathname === '/qa') {
     const { question, provider } = await readJsonBody(event)
     if (!question) throw apiError(400, '问题不能为空', 'MISSING_QUESTION')
@@ -518,7 +1128,7 @@ async function routeRequest(event, pathname, method) {
   }
 
   if (method === 'POST' && pathname === '/generate-notebook') {
-    if (!appState.analysisResult) throw apiError(400, '请先完成单文或多文分析', 'NO_ANALYSIS')
+    if (!appState.analysisResult) throw apiError(400, '请先在首页上传并完成分析', 'NO_ANALYSIS')
     const { focusAreas, customRequest, llmProvider } = await readJsonBody(event)
     const result = await generateNotebook(appState.analysisResult, {
       focusAreas,
@@ -701,17 +1311,22 @@ async function retrieveFromNeo4j(plan) {
   for (const term of terms) {
     const nodeRows = await runQuery(
       `MATCH (n)
-       WHERE (n.text IS NOT NULL AND toLower(n.text) CONTAINS toLower($term))
+       WHERE none(label IN labels(n) WHERE label IN $technicalLabels)
+         AND ((n.text IS NOT NULL AND toLower(n.text) CONTAINS toLower($term))
           OR (n.id IS NOT NULL AND toLower(toString(n.id)) CONTAINS toLower($term))
-          OR (n.summary IS NOT NULL AND toLower(n.summary) CONTAINS toLower($term))
+          OR (n.summary IS NOT NULL AND toLower(n.summary) CONTAINS toLower($term)))
        OPTIONAL MATCH (n)-[r]-(m)
+       WHERE m IS NULL OR (
+         none(label IN labels(m) WHERE label IN $technicalLabels)
+         AND NOT type(r) IN $technicalRelTypes
+       )
        RETURN coalesce(n.id, n.name, n.text) AS title,
               labels(n) AS labels,
               n.text AS text,
               n.summary AS summary,
               collect(DISTINCT coalesce(n.id, n.name, n.text) + ' -[' + type(r) + ']- ' + coalesce(m.id, m.name, m.text))[0..8] AS neighborhood
        LIMIT 5`,
-      { term }
+      { term, technicalLabels: TECHNICAL_NODE_LABELS, technicalRelTypes: TECHNICAL_REL_TYPES }
     )
     for (const row of nodeRows) {
       sources.push({
@@ -746,25 +1361,150 @@ async function retrieveFromNeo4j(plan) {
   return sources
 }
 
-async function retrieveVectorEvidence(question) {
+async function retrieveGraphStructureEvidence(plan) {
+  const terms = [...new Set([...plan.searchQueries, ...plan.entities, ...plan.relationTypes].filter(Boolean))].slice(0, 16)
+  if (!terms.length) return []
+  const sources = []
+
+  const sectionRows = await runQuery(
+    `MATCH (s:RagSection)
+     WHERE any(term IN $terms WHERE toLower(s.text) CONTAINS toLower(term)
+        OR toLower(s.title) CONTAINS toLower(term))
+     OPTIONAL MATCH (s)-[:HAS_PARENT_CHUNK]->(p:RagParentChunk)
+     RETURN s.title AS title, s.path AS path, s.text AS text, collect(p.text)[0..2] AS parents
+     LIMIT 6`,
+    { terms }
+  ).catch(() => [])
+  for (const row of sectionRows) {
+    sources.push({
+      type: 'section',
+      title: row.title,
+      score: 3,
+      content: compactText(`章节路径: ${(row.path || []).join(' > ')}\n${row.text || ''}\n父块: ${(row.parents || []).join('\n')}`, 1400),
+    })
+  }
+
+  const relationRows = await runQuery(
+    `MATCH (gr:GraphRelation)
+     WHERE any(term IN $terms WHERE toLower(gr.text) CONTAINS toLower(term)
+        OR toLower(gr.source) CONTAINS toLower(term)
+        OR toLower(gr.target) CONTAINS toLower(term)
+        OR toLower(gr.relationType) CONTAINS toLower(term))
+     OPTIONAL MATCH (src)-[:AS_RELATION_SOURCE]->(gr)-[:AS_RELATION_TARGET]->(dst)
+     OPTIONAL MATCH (src)-[r]-(mid)
+     RETURN gr.source AS source, gr.target AS target, gr.relationType AS relationType, gr.text AS text,
+            collect(DISTINCT coalesce(src.id, src.name, src.text) + ' -[' + type(r) + ']- ' + coalesce(mid.id, mid.name, mid.text))[0..5] AS sourceNeighborhood
+     LIMIT 8`,
+    { terms }
+  ).catch(() => [])
+  for (const row of relationRows) {
+    sources.push({
+      type: 'graph-relation',
+      title: `${row.source} -[${row.relationType}]-> ${row.target}`,
+      score: 3.5,
+      content: compactText(`${row.text || ''}\n源实体邻域: ${(row.sourceNeighborhood || []).join('; ')}`, 1400),
+    })
+  }
+
+  const communityRows = await runQuery(
+    `MATCH (c:RagCommunity)
+     WHERE any(term IN $terms WHERE toLower(c.text) CONTAINS toLower(term)
+        OR any(member IN c.members WHERE toLower(member) CONTAINS toLower(term)))
+     OPTIONAL MATCH (c)-[:CONTAINS_ENTITY]->(n)
+     RETURN c.id AS id, c.members AS members, c.text AS text,
+            collect(DISTINCT labels(n)[0] + ':' + coalesce(n.id, n.name, n.text))[0..12] AS entities
+     LIMIT 5`,
+    { terms }
+  ).catch(() => [])
+  for (const row of communityRows) {
+    sources.push({
+      type: 'community',
+      title: row.id,
+      score: 2.8,
+      content: compactText(`社区成员: ${(row.members || []).join(', ')}\n${row.text || ''}\n实体类型: ${(row.entities || []).join('; ')}`, 1600),
+    })
+  }
+
+  const entityNames = plan.entities.filter(Boolean).slice(0, 6)
+  for (let i = 0; i < entityNames.length; i++) {
+    for (let j = i + 1; j < entityNames.length; j++) {
+      const pathRows = await runQuery(
+        `MATCH (a), (b)
+         WHERE (toLower(coalesce(a.id, a.name, a.text, '')) CONTAINS toLower($a))
+           AND (toLower(coalesce(b.id, b.name, b.text, '')) CONTAINS toLower($b))
+         MATCH p = shortestPath((a)-[*..3]-(b))
+         WHERE all(n IN nodes(p) WHERE NOT n:RagChunk)
+         RETURN [n IN nodes(p) | coalesce(n.id, n.name, n.title, n.text)] AS nodes,
+                [r IN relationships(p) | type(r)] AS rels
+         LIMIT 2`,
+        { a: entityNames[i], b: entityNames[j] }
+      ).catch(() => [])
+      for (const row of pathRows) {
+        const pathText = (row.nodes || []).map((node, idx) => (idx < (row.rels || []).length ? `${node} -[${row.rels[idx]}]->` : node)).join(' ')
+        sources.push({ type: 'graph-path', title: `${entityNames[i]} ↔ ${entityNames[j]}`, score: 4, content: compactText(pathText, 1200) })
+      }
+    }
+  }
+
+  return sources
+}
+
+async function retrieveVectorEvidence(question, analysisResult) {
   try {
+    if (vectorIndexAvailable !== true) {
+      const indexes = await runQuery(
+        `SHOW INDEXES
+         YIELD name, type
+         WHERE name = 'vector_index' AND type = 'VECTOR'
+         RETURN name
+         LIMIT 1`
+      ).catch(() => [])
+      vectorIndexAvailable = indexes.length > 0
+      if (!vectorIndexAvailable) {
+        await ensureRagEmbeddings({
+          fileHash: appState.currentFileHash || 'current-analysis',
+          fileName: appState.currentFile || analysisResult?.fileName || '当前分析',
+          fullText: analysisResult?.fullText || (analysisResult?.docs || []).join('\n'),
+          chunks: (appState.lcDocsTexts || analysisResult?.docs || []).map((text, index) => ({ text, index })),
+          entities: analysisResult?.entities || [],
+          relations: analysisResult?.relations || [],
+        })
+      }
+      if (!vectorIndexAvailable) return []
+    }
+
     const embeddings = new LocalEmbeddings()
     const questionEmbedding = await embeddings.embedQuery(question)
     const vectorResults = await runQuery(
-      `CALL db.index.vector.queryNodes('vector_index', 8, $embedding)
+      `CALL db.index.vector.queryNodes('vector_index', 16, $embedding)
        YIELD node, score
-       WHERE node.text IS NOT NULL AND score > 0.25
-       RETURN coalesce(node.id, node.name, node.text) AS title, node.text AS content, score
+       WHERE node.embedding IS NOT NULL AND score > 0.25
+       OPTIONAL MATCH (node)-[r]-(neighbor)
+       OPTIONAL MATCH (parent:RagParentChunk)-[:HAS_CHILD_CHUNK]->(node)
+       RETURN coalesce(node.name, node.id, node.source, node.text) AS title,
+              coalesce(node.vectorKind, head(labels(node)), 'vector') AS kind,
+              labels(node) AS labels,
+              coalesce(node.text, node.embeddingText, node.summary) AS content,
+              parent.text AS parentText,
+              collect(DISTINCT type(r) + ':' + coalesce(neighbor.name, neighbor.id, neighbor.text))[0..6] AS neighborhood,
+              score
        ORDER BY score DESC`,
       { embedding: questionEmbedding }
     )
     return vectorResults.map((r) => ({
-      type: 'vector',
+      type: `vector-${r.kind || 'node'}`,
       title: r.title,
-      score: Number(r.score || 0),
-      content: compactText(r.content, 900),
+      score: Number(r.score || 0) * 4,
+      content: compactText(
+        `${(r.labels || []).join('/')} ${r.content || ''} ${r.parentText ? `父块上下文: ${r.parentText}` : ''} ${(r.neighborhood || []).join('; ')}`,
+        r.kind === 'chunk' ? 1400 : 1000
+      ),
     }))
   } catch (error) {
+    if (String(error.message || '').includes('There is no such vector schema index')) {
+      vectorIndexAvailable = false
+      return []
+    }
     console.warn('Vector QA lookup skipped:', error.message)
     return []
   }
@@ -772,7 +1512,7 @@ async function retrieveVectorEvidence(question) {
 
 async function answerQuestion(question, provider) {
   const analysisResult = appState.analysisResult
-  if (!analysisResult) throw apiError(400, '请先完成单文或多文分析', 'NO_ANALYSIS')
+  if (!analysisResult) throw apiError(400, '请先在首页上传并完成分析', 'NO_ANALYSIS')
 
   const plan = await planGraphRagQuestion(question, analysisResult, provider)
   const sources = [
@@ -781,7 +1521,11 @@ async function answerQuestion(question, provider) {
       console.warn('Neo4j QA lookup skipped:', error.message)
       return []
     })),
-    ...(await retrieveVectorEvidence(question)),
+    ...(await retrieveGraphStructureEvidence(plan).catch((error) => {
+      console.warn('GraphRAG structure lookup skipped:', error.message)
+      return []
+    })),
+    ...(await retrieveVectorEvidence(question, analysisResult)),
   ]
 
   const deduped = []
@@ -811,9 +1555,9 @@ async function answerQuestion(question, provider) {
       {
         role: 'system',
         content: `你是 GraphRAG + Agentic 分析问答助手。你必须:
-1. 先理解问题意图，再综合图谱节点、关系、文本块、自动洞察和历史报告。
+1. 先理解问题意图，再综合章节、父子文本块、实体、关系节点、实体路径、社区、自动洞察和历史报告。
 2. 只基于证据回答；证据不足时明确说不足。
-3. 回答要给出关键实体、关系链、依据编号，例如 [1][3]。
+3. 回答要给出关键实体、关系链/路径、章节或文本依据编号，例如 [1][3]。
 4. 如果问题有歧义，说明你采用的解释。`,
       },
       {
@@ -865,7 +1609,7 @@ async function finalizeResearchReport(payload) {
     {
       title:
         analysisResult.mode === 'multi'
-          ? `多文联合研究报告 (${articles.length} 篇)`
+          ? `多文全局研究报告 (${articles.length} 篇)`
           : `研究报告: ${articles[0]?.title || '中东冲突分析'}`,
       mode: analysisResult.mode || 'single',
       articles,
@@ -910,60 +1654,20 @@ async function finalizeResearchReport(payload) {
   }
 }
 
-function buildMultiAnalysisResult(result) {
-  const graphNodes = result.entities.map((e) => ({
-    id: e.name || e.id,
-    type: e.type,
-    text: [e.name, e.summary].filter(Boolean).join(' — ').slice(0, 100),
-  }))
-  const graphLinks = result.relations.map((r) => ({
-    source: r.source,
-    target: r.target,
-    type: r.type,
-  }))
-
-  return {
-    mode: 'multi',
-    fileName: `联合分析 (${result.articleCount} 篇)`,
-    articles: result.articles,
-    jointAnalysis: result.jointAnalysis,
-    themeSummary: result.themeSummary,
-    conflictEvolution: result.conflictEvolution,
-    entities: result.entities,
-    relations: result.relations,
-    work1Metrics: result.work1Metrics,
-    graphData: { nodes: graphNodes, links: graphLinks },
-    stats: {
-      meta: {
-        title: `多文联合分析 (${result.articleCount} 篇)`,
-        totalEntities: result.entities.length,
-        totalRelations: result.relations.length,
-      },
-      entityDistribution: result.work1Metrics.entityTypeDist,
-      relationDistribution: result.work1Metrics.relationTypeDist,
-    },
-    insights: [
-      `联合分析 **${result.articleCount}** 篇同主题文章`,
-      result.themeSummary ? `共同主题: **${result.themeSummary}**` : '',
-      result.conflictEvolution ? `冲突演化: ${result.conflictEvolution}` : '',
-    ].filter(Boolean),
-    analysisComplete: true,
-  }
-}
-
 function parseGraphDataForViz(cachedData) {
   const nodes = (cachedData.nodes || []).map((n) => ({
     id: String(n.id),
     type: n.type || 'Unknown',
     text: (n.properties?.text || n.id || '').slice(0, 100),
   }))
+  const typeById = new Map(nodes.map((node) => [node.id, node.type || 'Unknown']))
 
   const links = (cachedData.relationships || []).map((r) => ({
     source: String(r.source),
     target: String(r.target),
     type: r.type || 'UNKNOWN',
-    source_type: 'Unknown',
-    target_type: 'Unknown',
+    source_type: typeById.get(String(r.source)) || 'Unknown',
+    target_type: typeById.get(String(r.target)) || 'Unknown',
   }))
 
   return { nodes, links }
@@ -973,7 +1677,7 @@ function buildGraphDataFromExtraction(entities, relations) {
   const entityMap = new Map()
   for (const entity of entities || []) {
     const id = String(entity.id || entity.name || '').trim()
-    if (!id || entityMap.has(id)) continue
+    if (!id || entityMap.has(id) || !isBusinessEntity({ ...entity, id })) continue
     entityMap.set(id, {
       id,
       type: entity.type || 'Unknown',
@@ -985,11 +1689,12 @@ function buildGraphDataFromExtraction(entities, relations) {
   for (const rel of relations || []) {
     const source = String(rel.source || '').trim()
     const target = String(rel.target || '').trim()
-    if (!source || !target || !entityMap.has(source) || !entityMap.has(target)) continue
+    const type = rel.type || 'UNKNOWN'
+    if (!source || !target || !entityMap.has(source) || !entityMap.has(target) || TECHNICAL_REL_TYPES.includes(type)) continue
     links.push({
       source,
       target,
-      type: rel.type || 'UNKNOWN',
+      type,
       source_type: entityMap.get(source)?.type || 'Unknown',
       target_type: entityMap.get(target)?.type || 'Unknown',
     })
@@ -1011,16 +1716,18 @@ function buildEdgesFromExtraction(entities, relations) {
   return (relations || []).map((rel) => {
     const source = String(rel.source || '').trim()
     const target = String(rel.target || '').trim()
+    const relation = rel.type || 'UNKNOWN'
+    if (TECHNICAL_REL_TYPES.includes(relation)) return null
     return {
       source_type: typeById.get(source) || 'Unknown',
       source_id: source,
       source_text: textById.get(source) || source,
-      relation: rel.type || 'UNKNOWN',
+      relation,
       target_type: typeById.get(target) || 'Unknown',
       target_id: target,
       target_text: textById.get(target) || target,
     }
-  })
+  }).filter(Boolean)
 }
 
 function countBy(items, getKey) {

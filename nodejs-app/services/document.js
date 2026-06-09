@@ -6,6 +6,11 @@ const config = require('../config');
 
 const CACHE_DIR = path.join(__dirname, '..', 'data', 'cache');
 const DATA_FILE = path.join(__dirname, '..', 'data', 'app_data.json');
+const PARENT_CHUNK_SIZE = 2400;
+const PARENT_CHUNK_OVERLAP = 240;
+const CHILD_CHUNK_SIZE = 700;
+const CHILD_CHUNK_OVERLAP = 120;
+const DEFAULT_SECTION_TITLE = '全文';
 
 async function ensureCacheDir() {
   await fs.mkdir(CACHE_DIR, { recursive: true });
@@ -31,15 +36,168 @@ async function loadFile(filePath) {
   return [{ text: content, page: 1 }];
 }
 
-function chunkText(text, chunkSize = config.doc.chunkSize, overlap = config.doc.chunkOverlap) {
-  const chunks = [];
-  let start = 0;
+function normalizeText(text) {
+  return String(text || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
 
-  while (start < text.length) {
-    const end = Math.min(start + chunkSize, text.length);
-    chunks.push(text.slice(start, end).replace(/\n/g, ' '));
-    start += chunkSize - overlap;
+function splitOversizedUnit(unit, maxSize) {
+  if (unit.length <= maxSize) return [unit];
+  const sentences = unit
+    .split(/(?<=[。！？!?；;.!?])\s+|(?<=[。！？!?；;.!?])/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const pieces = [];
+  let current = '';
+  for (const sentence of sentences.length ? sentences : [unit]) {
+    if ((current + sentence).length <= maxSize) {
+      current += current ? ` ${sentence}` : sentence;
+    } else {
+      if (current) pieces.push(current);
+      if (sentence.length <= maxSize) {
+        current = sentence;
+      } else {
+        for (let i = 0; i < sentence.length; i += maxSize) pieces.push(sentence.slice(i, i + maxSize));
+        current = '';
+      }
+    }
   }
+  if (current) pieces.push(current);
+  return pieces;
+}
+
+function splitTextUnits(text, maxUnitSize) {
+  const normalized = normalizeText(text);
+  if (!normalized) return [];
+  const paragraphs = normalized
+    .split(/\n\s*\n/)
+    .map((p) => p.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  return paragraphs.flatMap((paragraph) => splitOversizedUnit(paragraph, maxUnitSize));
+}
+
+function slugText(text, fallback) {
+  const slug = String(text || '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\u4e00-\u9fa5-]/g, '')
+    .slice(0, 60);
+  return slug || fallback;
+}
+
+function splitSections(text) {
+  const normalized = normalizeText(text);
+  if (!normalized) return [];
+  const lines = normalized.split('\n');
+  const sections = [];
+  let current = { title: DEFAULT_SECTION_TITLE, level: 0, lines: [] };
+  const headingRe = /^(#{1,6})\s+(.+)$|^(第[一二三四五六七八九十百千万0-9]+[章节部篇].*)$|^([0-9]+(?:\.[0-9]+)*[、.]\s*.+)$/;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const match = trimmed.match(headingRe);
+    if (match && current.lines.join('\n').trim()) {
+      sections.push(current);
+      const title = match[2] || match[3] || match[4] || trimmed;
+      const level = match[1] ? match[1].length : match[4] ? String(match[4]).split('.').length : 1;
+      current = { title: title.trim(), level, lines: [] };
+    } else if (match && !current.lines.join('\n').trim()) {
+      current.title = (match[2] || match[3] || match[4] || trimmed).trim();
+      current.level = match[1] ? match[1].length : 1;
+    } else {
+      current.lines.push(line);
+    }
+  }
+
+  if (current.lines.join('\n').trim()) sections.push(current);
+  if (!sections.length) return [{ title: DEFAULT_SECTION_TITLE, level: 0, text: normalized, path: [DEFAULT_SECTION_TITLE], index: 0 }];
+
+  const stack = [];
+  return sections.map((section, index) => {
+    while (stack.length && stack[stack.length - 1].level >= section.level) stack.pop();
+    stack.push({ title: section.title, level: section.level });
+    return {
+      title: section.title,
+      level: section.level,
+      text: section.lines.join('\n').trim(),
+      path: stack.map((s) => s.title),
+      index,
+    };
+  });
+}
+
+function tailOverlap(text, overlap) {
+  if (!overlap || text.length <= overlap) return text;
+  return text.slice(-overlap);
+}
+
+function packUnits(units, chunkSize, overlap) {
+  const chunks = [];
+  let current = '';
+  for (const unit of units) {
+    const next = current ? `${current}\n${unit}` : unit;
+    if (next.length <= chunkSize) {
+      current = next;
+      continue;
+    }
+    if (current) chunks.push(current);
+    const prefix = overlap && current ? tailOverlap(current, overlap) : '';
+    current = prefix ? `${prefix}\n${unit}` : unit;
+    while (current.length > chunkSize) {
+      chunks.push(current.slice(0, chunkSize));
+      current = current.slice(Math.max(chunkSize - overlap, 1));
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks.map((chunk) => chunk.replace(/\s+/g, ' ').trim()).filter(Boolean);
+}
+
+function chunkText(text, chunkSize = config.doc.chunkSize, overlap = config.doc.chunkOverlap) {
+  const safeChunkSize = Math.max(200, Number(chunkSize) || CHILD_CHUNK_SIZE);
+  const safeOverlap = Math.min(Math.max(0, Number(overlap) || 0), Math.floor(safeChunkSize / 2));
+  return packUnits(splitTextUnits(text, safeChunkSize), safeChunkSize, safeOverlap);
+}
+
+function chunkDocument(text, options = {}) {
+  const source = options.source || '';
+  const page = options.page || 1;
+  const parentChunkSize = options.parentChunkSize || PARENT_CHUNK_SIZE;
+  const parentOverlap = options.parentOverlap || PARENT_CHUNK_OVERLAP;
+  const childChunkSize = options.childChunkSize || Math.min(config.doc.chunkSize || CHILD_CHUNK_SIZE, CHILD_CHUNK_SIZE);
+  const childOverlap = options.childOverlap || Math.max(config.doc.chunkOverlap || 0, CHILD_CHUNK_OVERLAP);
+  const sections = splitSections(text);
+  const chunks = [];
+
+  sections.forEach((section) => {
+    const sectionId = `${source || 'document'}:p${page}:section:${section.index}:${slugText(section.title, 'section')}`;
+    const parentTexts = packUnits(splitTextUnits(section.text, parentChunkSize), parentChunkSize, parentOverlap);
+    parentTexts.forEach((parentText, parentIndexInSection) => {
+      const parentIndex = chunks.filter((c) => c.granularity === 'child').length + parentIndexInSection;
+      const parentId = `${sectionId}:parent:${parentIndexInSection}`;
+      const childTexts = chunkText(parentText, childChunkSize, childOverlap);
+      childTexts.forEach((childText, childIndex) => {
+        chunks.push({
+          text: childText,
+          source,
+          page,
+          index: chunks.length,
+          childIndex,
+          parentIndex,
+          parentId,
+          parentText,
+          sectionId,
+          sectionTitle: section.title,
+          sectionPath: section.path,
+          sectionLevel: section.level,
+          sectionIndex: section.index,
+          granularity: 'child',
+        });
+      });
+    });
+  });
 
   return chunks;
 }
@@ -108,12 +266,7 @@ async function processDocument(filePath, fileName) {
   const allChunks = [];
 
   for (const page of pages) {
-    const chunks = chunkText(page.text);
-    allChunks.push(...chunks.map((text, i) => ({
-      text,
-      source: fileName,
-      index: i,
-    })));
+    allChunks.push(...chunkDocument(page.text, { source: fileName, page: page.page }));
   }
 
   return allChunks;
@@ -151,7 +304,7 @@ async function loadAppData() {
 }
 
 module.exports = {
-  loadFile, chunkText, processDocument, parseArticleMeta,
+  loadFile, chunkText, chunkDocument, processDocument, parseArticleMeta,
   generateFileHash, saveGraphData, loadGraphData, loadAppData,
   CACHE_DIR,
 };

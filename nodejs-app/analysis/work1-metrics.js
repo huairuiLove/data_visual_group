@@ -347,7 +347,11 @@ function computeKeywordCooccurrence(docs, topN = 20) {
 function computeRelationTriples(relations) {
   const triples = {}
   for (const r of relations) {
-    const key = `${r.source}|${r.type}|${r.target}`
+    const source = r.source || r.source_id || r.from || ''
+    const target = r.target || r.target_id || r.to || ''
+    const type = r.type || r.relation || r.relationType || ''
+    if (!source || !target) continue
+    const key = `${source}|${type || '关系'}|${target}`
     triples[key] = (triples[key] || 0) + (r.count || 1)
   }
   return Object.entries(triples)
