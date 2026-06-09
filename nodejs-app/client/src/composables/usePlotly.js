@@ -14,14 +14,44 @@ function loadPlotly() {
 
 export function usePlotly(elRef, options = {}) {
   const plotReady = ref(false)
+  let resizeObserver = null
+  let pendingResize = null
 
   function isDisplayed(el) {
     return Boolean(el && el.isConnected && el.offsetParent !== null && el.clientWidth > 0 && el.clientHeight > 0)
   }
 
+  function waitForDisplayed(el, attempts = 8) {
+    if (isDisplayed(el)) return Promise.resolve(true)
+    if (attempts <= 0) return Promise.resolve(false)
+    return new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        setTimeout(() => resolve(waitForDisplayed(el, attempts - 1)), 30)
+      })
+    })
+  }
+
+  function waitForStableSize(el, attempts = 6, previous = null) {
+    if (!isDisplayed(el)) return Promise.resolve(false)
+    const current = `${el.clientWidth}x${el.clientHeight}`
+    if (previous === current || attempts <= 0) return Promise.resolve(true)
+    return new Promise((resolve) => {
+      requestAnimationFrame(() => resolve(waitForStableSize(el, attempts - 1, current)))
+    })
+  }
+
   function resizePlot(Plotly, el) {
     if (!isDisplayed(el)) return Promise.resolve()
     return Plotly.Plots.resize(el).catch(() => {})
+  }
+
+  function scheduleResize() {
+    const el = elRef.value
+    if (!el) return
+    clearTimeout(pendingResize)
+    pendingResize = setTimeout(() => {
+      loadPlotly().then((Plotly) => resizePlot(Plotly, el))
+    }, 80)
   }
 
   function render(data, layout = {}) {
@@ -37,13 +67,18 @@ export function usePlotly(elRef, options = {}) {
       ...layout,
     }
 
-    return loadPlotly().then((Plotly) => {
+    return loadPlotly().then(async (Plotly) => {
       if (!elRef.value) return
+      const ready = await waitForDisplayed(el)
+      if (!ready || !elRef.value) return
+      await waitForStableSize(el)
       return Plotly.react(el, data, defaultLayout, {
         responsive: true,
         displayModeBar: false,
       }).then(() => {
         plotReady.value = true
+        scheduleResize()
+        setTimeout(scheduleResize, 220)
         return resizePlot(Plotly, el)
       })
     })
@@ -56,8 +91,18 @@ export function usePlotly(elRef, options = {}) {
     }
   }
 
-  onMounted(() => window.addEventListener('resize', resize))
-  onUnmounted(() => window.removeEventListener('resize', resize))
+  onMounted(() => {
+    window.addEventListener('resize', resize)
+    if (typeof ResizeObserver !== 'undefined' && elRef.value) {
+      resizeObserver = new ResizeObserver(scheduleResize)
+      resizeObserver.observe(elRef.value)
+    }
+  })
+  onUnmounted(() => {
+    window.removeEventListener('resize', resize)
+    if (resizeObserver) resizeObserver.disconnect()
+    clearTimeout(pendingResize)
+  })
 
   return { plotReady, render, resize }
 }

@@ -21,6 +21,13 @@ const { render: renderChunkQuality } = usePlotly(chunkQualityChart, { layout: { 
 const { render: renderChunkHierarchy } = usePlotly(chunkHierarchyChart, { layout: { height: 560 } })
 
 const chunkStructure = computed(() => store.stats?.chunkStructure || { sections: [], parents: [], children: [] })
+const relationTypeCount = computed(() => new Set((store.edges || []).flatMap((edge) => [edge.source_type || '?', edge.target_type || '?'])).size)
+const relationFlowHeight = computed(() => Math.max(580, Math.min(980, 360 + relationTypeCount.value * 34)))
+const chunkHierarchyHeight = computed(() => {
+  const structure = chunkStructure.value
+  const nodeCount = 1 + (structure.sections?.length || 0) + (structure.parents?.length || 0) + (structure.children?.length || 0)
+  return Math.max(580, Math.min(1100, 360 + nodeCount * 12))
+})
 
 const chunkStats = computed(() => {
   const lengths = store.stats?.textLengths || []
@@ -195,7 +202,7 @@ function renderCharts() {
       const hover = []
       const docLabel = addLabel('文档')
 
-      sections.slice(0, 12).forEach((section, sectionOrder) => {
+      sections.forEach((section, sectionOrder) => {
         const sectionLabel = addLabel(`章节 ${sectionOrder + 1}: ${String(section.title || '全文').slice(0, 18)}`)
         source.push(docLabel)
         target.push(sectionLabel)
@@ -203,7 +210,7 @@ function renderCharts() {
         hover.push(`${section.title || '全文'}<br>${section.childCount || 0} 个子块 / ${section.chars || 0} 字符`)
       })
 
-      parents.slice(0, 28).forEach((parent) => {
+      parents.forEach((parent) => {
         const section = sections.find((item) => item.id === parent.sectionId)
         const sectionOrder = Math.max(0, sections.findIndex((item) => item.id === parent.sectionId))
         const sectionLabel = addLabel(`章节 ${sectionOrder + 1}: ${String(section?.title || '全文').slice(0, 18)}`)
@@ -222,7 +229,7 @@ function renderCharts() {
         item.chars += child.chars || 0
         childBuckets.set(key, item)
       })
-      ;[...childBuckets.values()].slice(0, 28).forEach((bucket) => {
+      ;[...childBuckets.values()].forEach((bucket) => {
         const parent = parents.find((item) => item.id === bucket.parentId)
         if (!parent) return
         const parentLabel = addLabel(`父块 ${parent.parentIndex + 1}`)
@@ -253,6 +260,7 @@ function renderCharts() {
         },
       }], {
         title: '文本分层 Chunk 关系图',
+        height: chunkHierarchyHeight.value,
         margin: { l: 10, r: 10, t: 45, b: 20 },
       })
     }
@@ -287,7 +295,7 @@ function renderCharts() {
     labels.forEach((l, i) => { labelIdx[l] = i })
 
     const sources = [], targets = [], values = []
-    Object.entries(pairs).slice(0, 15).forEach(([k, v]) => {
+    Object.entries(pairs).forEach(([k, v]) => {
       const [s, t] = k.split('→')
       sources.push(labelIdx[s]); targets.push(labelIdx[t]); values.push(v)
     })
@@ -304,23 +312,33 @@ function renderCharts() {
       link: { source: sources, target: targets, value: values, color: 'rgba(74,158,255,0.26)' },
     }], {
       title: '实体关系流向图',
+      height: relationFlowHeight.value,
       margin: { l: 10, r: 10, t: 45, b: 20 },
     })
 
     // Heatmap
-    const srcTypes = [...new Set(edges.map(e => e.source_type || '?'))].sort()
-    const tgtTypes = [...new Set(edges.map(e => e.target_type || '?'))].sort()
-    const mat = srcTypes.map(() => tgtTypes.map(() => 0))
+    const allTypes = [...new Set(edges.flatMap(e => [e.source_type || '?', e.target_type || '?']))].sort()
+    const mat = allTypes.map(() => allTypes.map(() => 0))
     edges.forEach(e => {
-      const si = srcTypes.indexOf(e.source_type || '?')
-      const ti = tgtTypes.indexOf(e.target_type || '?')
+      const si = allTypes.indexOf(e.source_type || '?')
+      const ti = allTypes.indexOf(e.target_type || '?')
       if (si >= 0 && ti >= 0) mat[si][ti]++
     })
 
     renderHeatmap([{
-      type: 'heatmap', z: mat, x: tgtTypes, y: srcTypes,
+      type: 'heatmap',
+      z: mat,
+      x: allTypes,
+      y: allTypes,
       colorscale: 'Viridis', reversescale: true,
-    }], { title: '实体类型关系热力图', xaxis: { tickangle: -30 } })
+      hovertemplate: '源类型 %{y}<br>目标类型 %{x}<br>关系数 %{z}<extra></extra>',
+    }], {
+      title: '实体类型关系热力图',
+      height: Math.max(460, Math.min(900, 260 + allTypes.length * 32)),
+      xaxis: { tickangle: -30, automargin: true },
+      yaxis: { automargin: true },
+      margin: { l: 95, r: 30, t: 45, b: 100 },
+    })
   }
 }
 
@@ -356,13 +374,13 @@ watch(() => [store.stats, store.edges], renderCharts, { deep: true })
       <div class="chart-half"><div ref="chunkQualityChart" class="chart chart-tech"/></div>
     </div>
     <div class="chart-row">
-      <div class="chart-full"><div ref="chunkHierarchyChart" class="chart chart-flow"/></div>
+      <div class="chart-full"><div ref="chunkHierarchyChart" class="chart chart-flow" :style="{ minHeight: chunkHierarchyHeight + 'px' }"/></div>
     </div>
 
     <h4>关系网络分析</h4>
     <div class="chart-row">
-      <div class="chart-half"><div ref="sankeyChart" class="chart chart-flow"/></div>
-      <div class="chart-half"><div ref="heatmapChart" class="chart"/></div>
+      <div class="chart-half"><div ref="sankeyChart" class="chart chart-flow" :style="{ minHeight: relationFlowHeight + 'px' }"/></div>
+      <div class="chart-half"><div ref="heatmapChart" class="chart chart-flow"/></div>
     </div>
   </div>
 </template>

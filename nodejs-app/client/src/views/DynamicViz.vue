@@ -19,7 +19,7 @@ let animTimer = null
 let timelineFrameCount = 1
 
 const { render: renderTimeline } = usePlotly(timelineChart, { layout: { height: 400 } })
-const { render: renderFlow } = usePlotly(flowChart, { layout: { height: 520 } })
+const { render: renderFlow } = usePlotly(flowChart, { layout: { height: 820 } })
 
 const metrics = computed(() => store.analysisResult?.work1Metrics || {})
 const entityTypeById = computed(() => {
@@ -239,7 +239,7 @@ function renderRelationFlow() {
     pairs.set(key, (pairs.get(key) || 0) + (rel.count || 1))
   }
 
-  const topPairs = [...pairs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 18)
+  const topPairs = [...pairs.entries()].sort((a, b) => b[1] - a[1])
   const labels = []
   const labelIndex = new Map()
   function addLabel(label) {
@@ -289,7 +289,8 @@ function renderRelationFlow() {
     },
   }], {
     title: '实体类型 → 关系 → 目标类型流向',
-    margin: { l: 10, r: 10, t: 45, b: 20 },
+    height: Math.max(820, Math.min(1200, 420 + labels.length * 28)),
+    margin: { l: 20, r: 20, t: 60, b: 35 },
   })
 }
 
@@ -352,7 +353,7 @@ onUnmounted(() => { stopAnimation(); stopDynamic() })
     </div>
 
     <div ref="timelineChart" class="chart chart-trend" v-show="mode === 'trend'"/>
-    <div ref="flowChart" class="chart" v-show="mode === 'flow'"/>
+    <div ref="flowChart" class="chart chart-flow" v-show="mode === 'flow'"/>
     <div ref="networkContainer" class="chart chart-tall" v-show="mode === 'network2d'"/>
   </div>
 </template>
@@ -368,6 +369,7 @@ onUnmounted(() => { stopAnimation(); stopDynamic() })
 .play-btn { margin-left: auto; color: var(--accent); }
 .chart { position: relative; background: var(--bg-card); border-radius: 8px; min-height: 300px; overflow: hidden; }
 .chart-trend { min-height: 500px; }
+.chart-flow { min-height: 860px; height: auto; }
 .chart-tall { height: 620px; }
 .empty { display: flex; align-items: center; justify-content: center; height: 300px; color: var(--text-muted); }
 </style>
